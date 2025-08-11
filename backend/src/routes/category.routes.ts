@@ -5,7 +5,7 @@ import {
     getCategoryById,
     updateCategory,
     deleteCategory
-} from '../controllers/category.controller.js';
+} from '../controllers/category.controller';
 import { verifyJWT, authorizeRoles } from "../middlewares/index"
 
 const router = Router();

@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { any, z } from 'zod';
 import mongoose, { FilterQuery, PipelineStage, SortOrder } from 'mongoose';
-import { Product, ProductDocument, ProductValidationSchema } from '../models/product.model.js';
-import { Reservation } from '../models/reservation.model.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { Product, ProductDocument, ProductValidationSchema } from '../models/product.model';
+import { Reservation } from '../models/reservation.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse';
+import { uploadOnCloudinary } from '../utils/cloudinary';
 
 type CreateProductBody = z.infer<typeof ProductValidationSchema>;
 
