@@ -62,10 +62,15 @@ export default function RentalOrderForm() {
   if (!order) return <div className="p-8 text-center text-red-600">Order not found</div>;
 
   // Extract details
+  const formatAddress = (addr: any) => {
+    if (!addr) return '';
+    if (typeof addr === 'string') return addr;
+    const { street, city, state, postalCode, country } = addr || {};
+    return [street, city, state, postalCode, country].filter(Boolean).join(', ');
+  };
   const code = `R${String(currentIdx+1).padStart(4,'0')}`;
   const customer = order.createdBy?.name || '';
-  const invoiceAddress = order.createdBy?.address || '';
-  const deliveryAddress = order.deliveryAddress || '';
+  const address = formatAddress(order.createdBy?.address);
   const rentalTemplate = order.rentalTemplate || '';
   const expiration = order.expiresAt ? new Date(order.expiresAt).toLocaleDateString() : '';
   const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '';
@@ -114,8 +119,7 @@ export default function RentalOrderForm() {
       <div className="grid grid-cols-2 gap-6 mb-6">
         <div>
           <div className="mb-2">Customer: <span className="font-semibold">{customer}</span></div>
-          <div className="mb-2">Invoice Address: <span className="font-semibold">{invoiceAddress}</span></div>
-          <div className="mb-2">Delivery Address: <span className="font-semibold">{deliveryAddress}</span></div>
+          <div className="mb-2">Address: <span className="font-semibold">{address}</span></div> 
           <div className="mb-2">Rental Template: <span className="font-semibold">{rentalTemplate}</span></div>
         </div>
         <div>
