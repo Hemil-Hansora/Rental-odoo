@@ -57,7 +57,7 @@ role: { type: String, enum: ['customer', 'end_user'], default: 'customer' },
     company: { type: String },
     taxId: { type: String },
     defaultPaymentMethodId: { type: String },
-    stripeCustomerId: { type: String },
+    razorPayCustomerId: { type: String },
   },
   preferences: {
     notifyByEmail: { type: Boolean, default: true },
