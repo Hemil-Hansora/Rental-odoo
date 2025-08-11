@@ -29,14 +29,8 @@ export const sendNotification = async (
             type,
             channel,
             payload,
-<<<<<<< HEAD
-            channel: 'in-app',
-            scheduledAt: new Date(),
-            status: 'scheduled'
-=======
             status: 'scheduled',
             scheduledAt
->>>>>>> 967aa6664a0dce2fa452a39f6721af7f9f9ef2bf
         });
 
         // 2. Emit a real-time event to the specific user's room
