@@ -3,9 +3,9 @@ import mongoose from "mongoose";
 
 export const connectDB = async (): Promise<void> => {
     try {
-        console.log(process.env.MONGODB_URI)
+        console.log(process.env.MONGODB_URL)
         const connectionInstance = await mongoose.connect(
-            `${process.env.MONGODB_URI}/${process.env.DB_NAME}`
+            `${process.env.MONGODB_URL}/${process.env.DB_NAME}`
         );
 
         console.log(

@@ -1,4 +1,4 @@
-import { ApiError, asyncHandler,AuthRequest } from "../utils";
+import { ApiError, asyncHandler,AuthRequest } from "../utils/index";
 import { User } from "../models/user.model";
 import jwt from "jsonwebtoken";
 
