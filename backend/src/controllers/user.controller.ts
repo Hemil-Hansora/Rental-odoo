@@ -50,11 +50,16 @@ const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessT
 
 // Zod schema for signup request body validation
 const signupBodySchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters long"),
-  email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
-  role:z.string()
+    name: z.string().min(2, "Name must be at least 2 characters long"),
+    email: z.string().email("Please enter a valid email address"),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+    // Accept both 'end_user' and legacy 'end-user', normalize to 'end_user'
+    role: z.union([
+        z.literal('customer'),
+        z.literal('end_user'),
+        z.literal('end-user')
+    ]).transform((v) => (v === 'end-user' ? 'end_user' : v)),
 });
 
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
