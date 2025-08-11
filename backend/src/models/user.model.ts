@@ -1,8 +1,6 @@
 import { Schema, model, models, Document } from 'mongoose';
 import { z } from 'zod';
-// import { zodObjectId } from '../lib/zod-types';
 
-// ZOD SCHEMA
 const UserAddressSchema = z.object({
   street: z.string(),
   city: z.string(),
@@ -15,7 +13,7 @@ const UserBillingInfoSchema = z.object({
   company: z.string().optional(),
   taxId: z.string().optional(),
   defaultPaymentMethodId: z.string().optional(),
-  stripeCustomerId: z.string().optional(), // As per notes
+  stripeCustomerId: z.string().optional(), 
 });
 
 const UserPreferencesSchema = z.object({
@@ -35,11 +33,10 @@ export const UserValidationSchema = z.object({
   metadata: z.record(z.any()).optional(),
 });
 
-// TYPESCRIPT TYPE
 export type IUser = z.infer<typeof UserValidationSchema>;
 export type UserDocument = IUser & Document;
 
-// MONGOOSE SCHEMA
+
 const userMongooseSchema = new Schema<UserDocument>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, index: true },
@@ -66,5 +63,5 @@ const userMongooseSchema = new Schema<UserDocument>({
   metadata: { type: Schema.Types.Mixed },
 }, { timestamps: true });
 
-// MODEL
+
 export const User = models.User || model<UserDocument>('User', userMongooseSchema);
