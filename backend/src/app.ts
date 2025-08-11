@@ -16,6 +16,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+import userRouter from "./routes/user.routes";
+
+
+app.use("/api/v1/user", userRouter);
+
 
 
 app.use(errorMiddleware);
