@@ -20,7 +20,13 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+<<<<<<< HEAD
     "mongoose": "^8.17.1"
+=======
+    "mongoose": "^8.17.1",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7"
+>>>>>>> ff7f55c4222c8af8c6af237262acf14f1ab76317
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
