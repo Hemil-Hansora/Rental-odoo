@@ -13,10 +13,7 @@ declare global {
   }
 }
 
-/**
- * Middleware to verify JWT token from cookies or Authorization header.
- * Attaches the authenticated user object to the request object.
- */
+
 export const verifyJWT = asyncHandler(async (req: Request, res, next) => {
   const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
 
@@ -24,7 +21,6 @@ export const verifyJWT = asyncHandler(async (req: Request, res, next) => {
     throw new ApiError(401, "Unauthorized request: No token provided");
   }
 
-  // 🚨 Ensure your secret is in your .env file
   const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET || "your-access-token-secret";
   
   const decodedToken = jwt.verify(token, accessTokenSecret) as JwtPayload;
