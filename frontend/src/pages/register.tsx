@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,31 +15,27 @@ import {
 } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { api } from "@/lib/api";
 
-const signupSchema = z
-  .object({
-    name: z.string().min(2, { message: "Name must be at least 2 characters long." }),
-    email: z.string().email({ message: "Please enter a valid email address." }),
-    phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
-    password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
-    confirmPassword: z.string().min(6, { message: "Confirm password must be at least 6 characters long." }),
-    role: z.enum(["end-user", "customer"]),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match.",
-  });
+const signupSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters long." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
+  role: z.enum(["end-user", "customer"]), // <- no second argument here
+});
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+ 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { role: "end-user" },
+    defaultValues: { role: "customer" },
   });
 
   const [isLoading, setIsLoading] = React.useState(false);
@@ -48,11 +45,13 @@ export default function SignupPage() {
     setIsLoading(true);
     setApiError(null);
     try {
+   
       await new Promise((res) => setTimeout(res, 600));
       console.log("Form submitted (frontend only):", data);
       alert("Registration simulated (frontend only). You can wire backend later.");
     } catch (err) {
-      setApiError("Something went wrong. Please try again.");
+      const message = (err as any)?.response?.data?.message || "Something went wrong. Please try again.";
+      setApiError(message);
     } finally {
       setIsLoading(false);
     }
@@ -105,8 +104,8 @@ export default function SignupPage() {
                 className="block w-full rounded-md border border-gray-200 bg-white px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400"
                 aria-invalid={!!errors.role}
               >
-                <option value="end-user">End User</option>
                 <option value="customer">Customer</option>
+                <option value="end_user">End User</option>
               </select>
               {errors.role && (
                 <p className="text-red-500 text-sm">
