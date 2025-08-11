@@ -153,8 +153,8 @@ export default function ReviewOrderPage() {
               </div>
             </Card>
 
-            <div className="border rounded-md overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="border rounded-md overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b bg-accent/30">
                     <th className="text-left p-2">Item</th>

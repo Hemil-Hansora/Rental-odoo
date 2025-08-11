@@ -90,13 +90,13 @@ export default function CartPage() {
 							const price = p.pricing?.pricePerDay ?? p.pricing?.pricePerWeek ?? p.pricing?.pricePerHour ?? 0
 							const unit = p.pricing?.pricePerDay ? '/day' : p.pricing?.pricePerWeek ? '/week' : p.pricing?.pricePerHour ? '/hour' : ''
 							return (
-								<div key={it.id} className="border rounded-md p-4 flex gap-4 items-center">
-									{img ? <img src={img} className="w-24 h-20 object-cover rounded" /> : <div className="w-24 h-20 bg-muted rounded" />}
+								<div key={it.id} className="border rounded-md p-4 flex flex-col sm:flex-row gap-4 sm:items-center">
+									{img ? <img src={img} className="w-full sm:w-24 h-40 sm:h-20 object-cover rounded" /> : <div className="w-full sm:w-24 h-40 sm:h-20 bg-muted rounded" />}
 									<div className="flex-1">
 										<div className="font-medium">{p.name}</div>
 										<div className="text-sm text-muted-foreground">₹{price}{unit}</div>
 									</div>
-									<div className="flex items-center gap-2">
+									<div className="flex flex-wrap items-center gap-2">
 										<input type="number" min={1} value={it.qty} onChange={e => updateCartQty(it.id, Number(e.target.value))} className="w-20 border rounded px-2 py-1" />
 										<Button variant="destructive" size="sm" onClick={() => removeFromCart(it.id)}>Remove</Button>
 									</div>

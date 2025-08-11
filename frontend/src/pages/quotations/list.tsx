@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import CustomerNavbar from '@/components/customer/CustomerNavbar'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 type DeliveryMethod = 'pickup' | 'delivery'
 
@@ -15,6 +17,12 @@ export default function QuotationsListPage() {
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [rows, setRows] = useState<any[]>([])
+	// Delivery modal state (customer flow)
+	const [showModal, setShowModal] = useState(false)
+	const [selectedId, setSelectedId] = useState<string | null>(null)
+	const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('pickup')
+	const [deliveryAddress, setDeliveryAddress] = useState('')
+	const [submitting, setSubmitting] = useState(false)
 
 	const load = async () => {
 		try {
@@ -59,18 +67,33 @@ export default function QuotationsListPage() {
 		} catch (e: any) { alert(e?.response?.data?.message || 'Failed to delete') }
 	}
 
-	const convertToOrder = async (id: string) => {
-		const method = (prompt('Delivery method? Type pickup or delivery', 'pickup') || '').toLowerCase() as DeliveryMethod
-		if (method !== 'pickup' && method !== 'delivery') return
-		let address: string | undefined
-		if (method === 'delivery') {
-			address = prompt('Enter delivery address') || undefined
-			if (!address) { alert('Delivery address is required'); return }
+	const openDeliveryModal = (id: string) => {
+		setSelectedId(id)
+		setDeliveryMethod('pickup')
+		setDeliveryAddress('')
+		setShowModal(true)
+	}
+
+	const submitOrder = async () => {
+		if (!selectedId) return
+		if (deliveryMethod === 'delivery' && !deliveryAddress.trim()) {
+			alert('Delivery address is required')
+			return
 		}
 		try {
-			await api.post('/api/v1/order/create-quotation', { quotationId: id, deliveryMethod: method, deliveryAddress: address })
+			setSubmitting(true)
+			await api.post('/api/v1/order/create-quotation', {
+				quotationId: selectedId,
+				deliveryMethod,
+				deliveryAddress: deliveryMethod === 'delivery' ? deliveryAddress.trim() : undefined,
+			})
+			setShowModal(false)
 			navigate('/orders/review')
-		} catch (e: any) { alert(e?.response?.data?.message || 'Failed to convert') }
+		} catch (e: any) {
+			alert(e?.response?.data?.message || 'Failed to convert')
+		} finally {
+			setSubmitting(false)
+		}
 	}
 
 	const list = useMemo(() => rows, [rows])
@@ -116,7 +139,7 @@ export default function QuotationsListPage() {
 										<>
 											<Button size="sm" onClick={() => navigate(`/quotations/${q._id}`)}>View</Button>
 											{q.status === 'approved' && (
-												<Button size="sm" onClick={() => convertToOrder(q._id)}>Order</Button>
+												<Button size="sm" onClick={() => openDeliveryModal(q._id)}>Order</Button>
 											)}
 											{q.status !== 'converted' && q.status !== 'cancelled_by_customer' && (
 												<>
@@ -134,6 +157,36 @@ export default function QuotationsListPage() {
 					</div>
 				)}
 			</div>
+
+			{/* Delivery modal */}
+			{showModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center">
+					<div className="absolute inset-0 bg-black/40" onClick={() => !submitting && setShowModal(false)} />
+					<div className="relative z-10 w-full max-w-md rounded-lg border bg-white p-4 shadow-lg">
+						<h2 className="text-lg font-semibold mb-2">Select delivery</h2>
+						<p className="text-sm text-muted-foreground mb-4">Choose how you want to receive your order.</p>
+						<div className="space-y-3">
+							<div>
+								<Label className="text-sm">Method</Label>
+								<select className="mt-1 h-9 w-full rounded-md border bg-white px-3 text-sm" value={deliveryMethod} onChange={e => setDeliveryMethod(e.target.value as DeliveryMethod)} disabled={submitting}>
+									<option value="pickup">Pickup (free)</option>
+									<option value="delivery">Delivery</option>
+								</select>
+							</div>
+							{deliveryMethod === 'delivery' && (
+								<div>
+									<Label htmlFor="addr" className="text-sm">Delivery address</Label>
+									<Input id="addr" placeholder="Name, Street, City, ZIP" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} disabled={submitting} />
+								</div>
+							)}
+						</div>
+						<div className="mt-4 flex items-center justify-end gap-2">
+							<Button variant="outline" onClick={() => setShowModal(false)} disabled={submitting}>Cancel</Button>
+							<Button onClick={submitOrder} disabled={submitting}>{submitting ? 'Submitting…' : 'Confirm'}</Button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }

@@ -92,8 +92,8 @@ export default function ApprovedQuotationsProductsPage() {
         ) : items.length === 0 ? (
           <div className="text-sm text-muted-foreground">No approved quotation items.</div>
         ) : (
-          <div className="border rounded-md overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border rounded-md overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b bg-accent/30">
                   <th className="text-left p-2">Quotation</th>

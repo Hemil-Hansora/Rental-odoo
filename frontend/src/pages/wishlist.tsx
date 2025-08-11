@@ -59,17 +59,17 @@ export default function WishlistPage() {
       ) : items.length === 0 ? (
         <div className="text-sm text-muted-foreground">Your wishlist is empty.</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map(p => {
             const img = p.images?.[0]
             const price = p.pricing?.pricePerDay ?? p.pricing?.pricePerWeek ?? p.pricing?.pricePerHour ?? 0
             const unit = p.pricing?.pricePerDay ? '/day' : p.pricing?.pricePerWeek ? '/week' : p.pricing?.pricePerHour ? '/hour' : ''
             return (
               <div key={p._id} className="border rounded-md p-4 space-y-2">
-                {img ? <img src={img} className="w-full h-32 object-cover rounded" /> : <div className="w-full h-32 bg-muted rounded" />}
+                {img ? <img src={img} className="w-full h-40 sm:h-32 object-cover rounded" /> : <div className="w-full h-40 sm:h-32 bg-muted rounded" />}
                 <div className="font-medium truncate" title={p.name}>{p.name}</div>
                 <div className="text-sm font-semibold">₹{price}{unit}</div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Button size="sm" onClick={() => moveToCart(p._id)}>Move to cart</Button>
                   <Button size="sm" variant="outline" onClick={() => navigate(`/product/${p._id}`)}>View</Button>
                   <Button size="sm" variant="destructive" onClick={() => removeFromWishlist(p._id)}>Remove</Button>
