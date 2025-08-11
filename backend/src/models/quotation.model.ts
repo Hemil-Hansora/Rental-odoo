@@ -12,7 +12,7 @@ export const QuotationValidationSchema = z.object({
   discount: z.number().min(0).default(0),
   tax: z.number().min(0).default(0),
   total: z.number().min(0),
-  status: z.enum(['draft', 'sent', 'approved', 'rejected', 'converted']).default('draft'),
+  status: z.enum(['draft', 'sent', 'approved', 'rejected']).default('draft'),
   expiresAt: z.date().optional(),
   notes: z.string().optional(),
   attachments: z.array(z.string().url()).optional(), // Assuming file refs are URLs
@@ -40,7 +40,7 @@ const quotationMongooseSchema = new Schema<QuotationDocument>({
   discount: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   total: { type: Number, required: true },
-  status: { type: String, enum: ['draft', 'sent', 'approved', 'rejected', 'converted'], default: 'draft' },
+  status: { type: String, enum: ['draft', 'sent', 'approved', 'rejected'], default: 'draft' },
   expiresAt: { type: Date },
   notes: { type: String },
   attachments: [{ type: String }],

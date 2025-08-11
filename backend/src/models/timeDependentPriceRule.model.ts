@@ -5,7 +5,7 @@ import { zodObjectId } from '../lib/zod-types';
 // ZOD SCHEMA
 export const TimeDependentPriceRuleValidationSchema = z.object({
   name: z.string(),
-  type: z.enum(['season', 'weekday', 'holiday', 'hours']),
+  type: z.enum(['weekday', 'holiday', 'hours']),
   pattern: z.record(z.any()), // e.g., { weekdays: [6,0] } or { dates: ['2025-12-25'] }
   multiplier: z.number().positive().optional(),
   fixedPrice: z.record(z.number().positive()).optional(), // e.g., { pricePerHour: 15 }
@@ -23,7 +23,7 @@ export type TimeDependentPriceRuleDocument = ITimeDependentPriceRule & Document;
 // MONGOOSE SCHEMA
 const timeDependentPriceRuleMongooseSchema = new Schema<TimeDependentPriceRuleDocument>({
   name: { type: String, required: true },
-  type: { type: String, enum: ['season', 'weekday', 'holiday', 'hours'], required: true },
+  type: { type: String, enum: ['weekday', 'holiday', 'hours'], required: true },
   pattern: { type: Schema.Types.Mixed, required: true },
   multiplier: { type: Number },
   fixedPrice: { type: Schema.Types.Mixed },
