@@ -44,7 +44,7 @@ const userMongooseSchema = new Schema<UserDocument>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
-role: { type: String, enum: ['customer', 'end_user'], default: 'customer' },
+  role: { type: String, enum: ['customer', 'end_user'], default: 'customer' },
   phone: { type: String },
   address: {
     street: { type: String },

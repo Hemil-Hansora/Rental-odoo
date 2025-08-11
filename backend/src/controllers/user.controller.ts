@@ -9,7 +9,7 @@ import { ApiError } from "../utils/apiError"; // Adjust path as needed
 import { ApiResponse } from "../utils/apiResponse"; // Adjust path as needed
 
 // --- Helper Function to Generate Tokens ---
-    
+
 const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessToken: string; refreshToken: string }> => {
     try {
         const user = await User.findById(userId);
@@ -17,7 +17,6 @@ const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessT
             throw new ApiError(404, "User not found while generating tokens");
         }
 
-        // 🚨 Ensure these secrets are in your .env file
         const accessTokenSecret:Secret  = process.env.ACCESS_TOKEN_SECRET as string ;
         const refreshTokenSecret: Secret  = process.env.REFRESH_TOKEN_SECRET as string ;
 
@@ -151,4 +150,126 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
                 "User logged in successfully"
             )
         );
+});
+
+
+export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
+    
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    };
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, {}, "User logged out successfully"));
+});
+
+
+
+export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+    return res
+        .status(200)
+        .json(new ApiResponse(200, req.user, "User profile fetched successfully"));
+});
+
+
+
+const updateUserSchema = z.object({
+    name: z.string().optional(),
+    phone: z.string().optional(),
+    address: z.object({
+        street: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        postalCode: z.string().optional(),
+        country: z.string().optional(),
+    }).optional(),
+    billingInfo: z.object({
+        company: z.string().optional(),
+        taxId: z.string().optional(),
+        defaultPaymentMethodId: z.string().optional(),
+        razorPayCustomerId: z.string().optional(), // Updated from notes
+    }).optional(),
+    preferences: z.object({
+        notifyByEmail: z.boolean().optional(),
+        notifyBySMS: z.boolean().optional(),
+    }).optional()
+});
+
+export const updateUserDetails = asyncHandler(async (req: Request, res: Response) => {
+
+    const validationResult = updateUserSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        throw new ApiError(400, "Invalid data provided", validationResult.error.errors);
+    }
+    const { name, phone, address, billingInfo, preferences } = validationResult.data;
+
+    
+    const updateData: { [key: string]: any } = {};
+
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+
+    
+    if (address) {
+        for (const [key, value] of Object.entries(address)) {
+            if (value !== undefined) updateData[`address.${key}`] = value;
+        }
+    }
+    if (billingInfo) {
+        for (const [key, value] of Object.entries(billingInfo)) {
+            if (value !== undefined) updateData[`billingInfo.${key}`] = value;
+        }
+    }
+    if (preferences) {
+        for (const [key, value] of Object.entries(preferences)) {
+            if (value !== undefined) updateData[`preferences.${key}`] = value;
+        }
+    }
+
+ 
+    if (Object.keys(updateData).length === 0) {
+        throw new ApiError(400, "No fields to update were provided");
+    }
+
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        { $set: updateData },
+        { new: true, runValidators: true } 
+    ).select("-passwordHash");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Profile updated successfully"));
+});
+
+export const changeCurrentPassword = asyncHandler(async (req: Request, res: Response) => {
+    const { oldPassword, newPassword } = req.body;
+
+    
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    
+    const isPasswordCorrect = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!isPasswordCorrect) {
+        throw new ApiError(401, "Invalid old password");
+    }
+
+
+    const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+    
+    user.passwordHash = newPasswordHash;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
