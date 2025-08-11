@@ -48,3 +48,69 @@ export function calculateCouponDiscount(amount: number, code: string): number {
   // default small incentive
   return amount * 0.05
 }
+
+// ----- Simple cart using localStorage -----
+export type CartItem = { id: string; qty: number }
+
+const CART_KEY = 'cart'
+
+function safeLocalStorage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+export function getCart(): CartItem[] {
+  const ls = safeLocalStorage()
+  if (!ls) return []
+  try {
+    const raw = ls.getItem(CART_KEY)
+    const arr = raw ? JSON.parse(raw) : []
+    if (Array.isArray(arr)) return arr.filter(x => x && typeof x.id === 'string' && typeof x.qty === 'number')
+    return []
+  } catch {
+    return []
+  }
+}
+
+function setCart(items: CartItem[]) {
+  const ls = safeLocalStorage()
+  if (!ls) return
+  ls.setItem(CART_KEY, JSON.stringify(items))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cart:updated'))
+  }
+}
+
+export function addToCart(productId: string, qty: number = 1) {
+  if (!productId || qty <= 0) return
+  const items = getCart()
+  const idx = items.findIndex(i => i.id === productId)
+  if (idx >= 0) items[idx].qty += qty
+  else items.push({ id: productId, qty })
+  setCart(items)
+}
+
+export function updateCartQty(productId: string, qty: number) {
+  const items = getCart()
+  const next = items
+    .map(i => (i.id === productId ? { ...i, qty } : i))
+    .filter(i => i.qty > 0)
+  setCart(next)
+}
+
+export function removeFromCart(productId: string) {
+  const items = getCart().filter(i => i.id !== productId)
+  setCart(items)
+}
+
+export function clearCart() {
+  setCart([])
+}
+
+export function totalCartQty(): number {
+  return getCart().reduce((sum, i) => sum + (i.qty || 0), 0)
+}

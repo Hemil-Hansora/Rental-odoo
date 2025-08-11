@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -23,8 +23,6 @@ type StateShape = {
 }
 
 export default function QuotationSummaryPage() {
-  const { id } = useParams<{ id: string }>()
-  const nav = useNavigate()
   const { state } = useLocation()
   const parsed = (state || {}) as StateShape
 

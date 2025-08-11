@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { api } from '@/lib/api'
+import { addToCart as addToCartLS, totalCartQty } from '@/lib/utils'
 import {
   Home,
   Store,
@@ -43,6 +44,13 @@ export default function CustomerDashboard() {
     if (!user) navigate('/login', { replace: true })
   }, [])
 
+  // Sync header cart count across pages
+  useEffect(() => {
+    const handler = () => setCartCount(totalCartQty())
+    window.addEventListener('cart:updated', handler)
+    return () => window.removeEventListener('cart:updated', handler)
+  }, [])
+
   // Data state
   const [products, setProducts] = useState<APIProduct[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -56,7 +64,7 @@ export default function CustomerDashboard() {
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [wishlist, setWishlist] = useState<string[]>([])
-  const [cart, setCart] = useState<string[]>([])
+  const [cartCount, setCartCount] = useState<number>(totalCartQty())
 
   // Fetch products
   useEffect(() => {
@@ -106,7 +114,8 @@ export default function CustomerDashboard() {
     setWishlist(w => w.includes(id) ? w.filter(x => x !== id) : [...w, id])
   }
   const addToCart = (id: string) => {
-    setCart(c => c.includes(id) ? c : [...c, id])
+    addToCartLS(id, 1)
+    setCartCount(totalCartQty())
   }
 
   const CategoryPill = ({ label }: { label: string }) => (
@@ -132,7 +141,7 @@ export default function CustomerDashboard() {
               <a href="/" className="inline-flex items-center gap-1 hover:underline"><Home className="size-4"/> Home</a>
               <a href="#shop" className="inline-flex items-center gap-1 hover:underline"><Store className="size-4"/> Rental shop</a>
               <button className="inline-flex items-center gap-1 hover:underline" title="Wishlist"><Heart className="size-4"/> Wishlist ({wishlist.length})</button>
-              <button className="inline-flex items-center gap-1 hover:underline" title="Cart"><ShoppingCart className="size-4"/> Cart ({cart.length})</button>
+              <button className="inline-flex items-center gap-1 hover:underline" title="Cart"><ShoppingCart className="size-4"/> Cart ({cartCount})</button>
               <a href="#review" className="hover:underline">Review order</a>
               <a href="#contact" className="inline-flex items-center gap-1 hover:underline"><Phone className="size-4"/> Contact us</a>
             </nav>
@@ -268,7 +277,7 @@ export default function CustomerDashboard() {
             <CardDescription>Preview your cart and proceed to checkout (coming soon)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">Items in cart: {cart.length}. We’ll integrate backend later.</div>
+            <div className="text-sm text-muted-foreground">Items in cart: {cartCount}. We’ll integrate backend later.</div>
           </CardContent>
         </Card>
       </section>

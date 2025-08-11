@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Heart, Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
-import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
+import { daysBetweenInclusive, calculateCouponDiscount, addToCart as addToCartLS } from '@/lib/utils'
 
 type APIProduct = {
   _id: string
@@ -109,13 +109,8 @@ export default function ProductDetailPage() {
   }
 
   const onAddToCart = () => {
-    // local-only demo cart; backend integration later
-    const existing = JSON.parse(localStorage.getItem('cart') || '[]') as Array<{ id: string; qty: number }>
     if (product?._id) {
-      const idx = existing.findIndex(x => x.id === product._id)
-      if (idx >= 0) existing[idx].qty += qty
-      else existing.push({ id: product._id, qty })
-      localStorage.setItem('cart', JSON.stringify(existing))
+      addToCartLS(product._id, qty)
       alert('Added to cart')
     }
   }
@@ -148,6 +143,7 @@ export default function ProductDetailPage() {
 
             <div className="rounded-xl border bg-white p-4">
               <div className="text-2xl font-semibold">{formatINR(showPrice.amount)}{showPrice.unit}</div>
+              <div className="mt-1 text-sm text-muted-foreground">For {qty} {qty === 1 ? 'item' : 'items'}: {formatINR((showPrice.amount || 0) * qty)}{showPrice.unit}</div>
               {rentalDays > 0 && (
                 <div className="mt-1 text-sm text-muted-foreground">Estimated total for {rentalDays} {rentalDays===1?'day':'days'} × {qty}: {formatINR(totalEstimate)}</div>
               )}
