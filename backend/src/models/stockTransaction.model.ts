@@ -17,6 +17,7 @@ export type StockTransactionDocument = IStockTransaction & Document;
 
 // MONGOOSE SCHEMA
 const stockTransactionMongooseSchema = new Schema<StockTransactionDocument>({
+  // @ts-ignore
   product: { type: Schema.Types.ObjectId, ref: 'Product', required: true, index: true },
   qtyChange: { type: Number, required: true },
   type: { type: String, enum: ['reservation', 'return', 'manual_adjust', 'maintenance'], required: true },

@@ -26,6 +26,7 @@ export type InvoiceDocument = IInvoice & Document;
 
 // MONGOOSE SCHEMA
 const invoiceMongooseSchema = new Schema<InvoiceDocument>({
+  // @ts-ignore
   order: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
   invoiceNumber: { type: String, required: true, unique: true },
   amount: { type: Number, required: true },

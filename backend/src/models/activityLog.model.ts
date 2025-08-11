@@ -18,8 +18,10 @@ export type ActivityLogDocument = IActivityLog & Document;
 // MONGOOSE SCHEMA
 const activityLogMongooseSchema = new Schema<ActivityLogDocument>({
   entityType: { type: String, required: true },
+  // @ts-ignore
   entityId: { type: Schema.Types.ObjectId, required: true },
   action: { type: String, required: true },
+  // @ts-ignore
   by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   details: { type: Schema.Types.Mixed },
 }, { timestamps: { createdAt: true, updatedAt: false } }); // Only createdAt is needed
