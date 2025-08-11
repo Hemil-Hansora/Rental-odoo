@@ -100,7 +100,6 @@ export default function RentalOrders() {
     <div className="flex h-full">
       {/* Sidebar */}
       <div className="w-64 border-r p-4 flex flex-col gap-6">
-        <Button className="mb-4 bg-purple-300 text-purple-900">Create</Button>
         <div>
           <div className="font-bold mb-2">RENTAL STATUS</div>
           {['ALL','Quotation','Quotation sent','Reserved','Pickedup','Returned'].map(s => (
@@ -124,7 +123,6 @@ export default function RentalOrders() {
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Button className="bg-purple-300 text-purple-900">Create</Button>
             <span className="font-bold text-lg">Rental Orders</span>
           </div>
           <div className="flex items-center gap-2">
