@@ -4,7 +4,17 @@ import { zodObjectId } from '../lib/zod-types';
 
 // ZOD SCHEMA
 export const NotificationValidationSchema = z.object({
-  type: z.enum(['reminder', 'overdue', 'pickup_soon']),
+ type: z.enum([
+    'reminder',
+    'overdue',
+    'pickup_soon',
+    'order_status_update',
+    'order_cancelled',
+    'new_quotation',
+    'quotation_status_update',
+    'quotation_cancelled_by_customer',
+    "order_overdue"
+  ]),
   recipient: zodObjectId,
   channel: z.enum(['email', 'push']),
   payload: z.record(z.any()),
@@ -19,7 +29,13 @@ export type NotificationDocument = INotification & Document;
 
 // MONGOOSE SCHEMA
 const notificationMongooseSchema = new Schema<NotificationDocument>({
-  type: { type: String, enum: ['reminder', 'overdue', 'pickup_soon'], required: true },
+  type: { 
+  type: String, 
+  enum: ['reminder', 'overdue', 'pickup_soon', 'order_status_update', 'order_cancelled' , 'new_quotation',
+    'quotation_status_update',
+    'quotation_cancelled_by_customer', "order_overdue"], 
+  required: true 
+},
   // @ts-ignore
   recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   channel: { type: String, enum: ['email', 'push'], required: true },

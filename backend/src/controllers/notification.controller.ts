@@ -8,16 +8,29 @@ import { ApiResponse } from '../utils/apiResponse';
 
 export const sendNotification = async (
     recipientId: string,
-    type: string,
-    payload: Record<string, any>
+    type:
+        | 'reminder'
+        | 'overdue'
+        | 'pickup_soon'
+        | 'order_status_update'
+        | 'order_cancelled'
+        | 'new_quotation'
+        | 'quotation_status_update'
+        | 'quotation_cancelled_by_customer'
+        | "order_overdue", // match schema
+    payload: Record<string, any>,
+    channel: 'email' | 'push' = 'push',           // default to push
+    scheduledAt: Date = new Date()                // default to now
 ) => {
     try {
         // 1. Save the notification to the database
         const notification = await Notification.create({
             recipient: recipientId,
             type,
+            channel,
             payload,
-            status: 'scheduled' // or 'sent' immediately
+            status: 'scheduled',
+            scheduledAt
         });
 
         // 2. Emit a real-time event to the specific user's room
@@ -28,6 +41,7 @@ export const sendNotification = async (
         return notification;
     } catch (error) {
         console.error("Failed to send notification:", error);
+        throw error;
     }
 };
 
