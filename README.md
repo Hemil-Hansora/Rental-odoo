@@ -1,3 +1,13 @@
+## 👥 Team Members
+
+**Hemil Hansora**
+**Vrund Patel**
+**Meet Soni**
+**Kaustav Das**
+
+## Problem Statement
+
+
 # Rental Management System - MERN Stack
 
 A comprehensive rental management solution built with the MERN stack (MongoDB, Express.js, React.js, Node.js), designed to streamline rental operations for businesses that rent out equipment, vehicles, properties, or any other assets.
