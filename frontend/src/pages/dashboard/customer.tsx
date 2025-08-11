@@ -10,7 +10,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { api } from "@/lib/api";
-import { addToCart as addToCartLS, totalCartQty } from "@/lib/utils";
+import { addToCart as addToCartLS, totalCartQty, getWishlist, toggleWishlist as toggleWishlistLS } from "@/lib/utils";
 import {
   Home,
   Store,
@@ -78,7 +78,7 @@ export default function CustomerDashboard() {
   const [maxPrice, setMaxPrice] = useState(100);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>(getWishlist());
   const [cartCount, setCartCount] = useState<number>(totalCartQty());
 
   // ✅ 3. Fetch categories from the new API endpoint
@@ -147,10 +147,15 @@ export default function CustomerDashboard() {
   }, [products, search, minPrice, maxPrice, selectedCats]);
 
   // ... rest of your component code remains the same
+  useEffect(() => {
+    const onW = () => setWishlist(getWishlist())
+    window.addEventListener('wishlist:updated', onW)
+    return () => window.removeEventListener('wishlist:updated', onW)
+  }, [])
+
   const toggleWishlist = (id: string) => {
-    setWishlist((w) =>
-      w.includes(id) ? w.filter((x) => x !== id) : [...w, id]
-    );
+    toggleWishlistLS(id)
+    setWishlist(getWishlist())
   };
   const addToCart = (id: string) => {
     addToCartLS(id, 1);
@@ -200,16 +205,10 @@ export default function CustomerDashboard() {
               >
                 <Store className="size-4" /> Rental shop
               </a>
-              <button
-                className="inline-flex items-center gap-1 hover:underline"
-                title="Wishlist"
-              >
+              <button onClick={() => navigate('/wishlist')} className="inline-flex items-center gap-1 hover:underline" title="Wishlist">
                 <Heart className="size-4" /> Wishlist ({wishlist.length})
               </button>
-              <button
-                className="inline-flex items-center gap-1 hover:underline"
-                title="Cart"
-              >
+              <button onClick={() => navigate('/cart')} className="inline-flex items-center gap-1 hover:underline" title="Cart">
                 <ShoppingCart className="size-4" /> Cart ({cartCount})
               </button>
               <a href="#review" className="hover:underline">

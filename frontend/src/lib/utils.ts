@@ -53,6 +53,7 @@ export function calculateCouponDiscount(amount: number, code: string): number {
 export type CartItem = { id: string; qty: number }
 
 const CART_KEY = 'cart'
+const WISHLIST_KEY = 'wishlist'
 
 function safeLocalStorage(): Storage | null {
   if (typeof window === 'undefined') return null
@@ -113,4 +114,53 @@ export function clearCart() {
 
 export function totalCartQty(): number {
   return getCart().reduce((sum, i) => sum + (i.qty || 0), 0)
+}
+
+// ----- Simple wishlist using localStorage -----
+export function getWishlist(): string[] {
+  const ls = safeLocalStorage()
+  if (!ls) return []
+  try {
+    const raw = ls.getItem(WISHLIST_KEY)
+    const arr = raw ? JSON.parse(raw) : []
+    if (Array.isArray(arr)) return arr.filter(id => typeof id === 'string')
+    return []
+  } catch {
+    return []
+  }
+}
+
+function setWishlist(ids: string[]) {
+  const ls = safeLocalStorage()
+  if (!ls) return
+  ls.setItem(WISHLIST_KEY, JSON.stringify(Array.from(new Set(ids))))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('wishlist:updated'))
+  }
+}
+
+export function addToWishlist(productId: string) {
+  if (!productId) return
+  const ids = getWishlist()
+  if (!ids.includes(productId)) {
+    setWishlist([...ids, productId])
+  }
+}
+
+export function removeFromWishlist(productId: string) {
+  setWishlist(getWishlist().filter(id => id !== productId))
+}
+
+export function toggleWishlist(productId: string) {
+  const ids = getWishlist()
+  if (ids.includes(productId)) setWishlist(ids.filter(id => id !== productId))
+  else setWishlist([...ids, productId])
+}
+
+export function isInWishlist(productId: string): boolean {
+  return getWishlist().includes(productId)
+}
+
+export function totalWishlist(): number {
+  return getWishlist().length
 }
