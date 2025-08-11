@@ -2,8 +2,53 @@ import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Shield, BadgeCheck, Zap, Star } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+
+type CategoryKey = 'Cameras' | 'Tools' | 'Furniture' | 'Console'
 
 export default function LandingPage() {
+  // Category image sources with multiple fallbacks (free Unsplash CDN)
+  const categorySources: Record<CategoryKey, string[]> = {
+    Cameras: [
+      'https://images.unsplash.com/photo-1519183071298-a2962be96f83?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1512442761318-36123e2a5257?q=60&auto=format&fit=crop&w=600',
+    ],
+    Tools: [
+      'https://images.unsplash.com/photo-1505798577917-a65157d3320a?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1497366216548-37526070297c?q=60&auto=format&fit=crop&w=600',
+    ],
+    Furniture: [
+      'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1505691723518-36a5ac3b2fba?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=60&auto=format&fit=crop&w=600',
+    ],
+    Console: [
+      'https://images.unsplash.com/photo-1606813907291-76a4d9b61a2a?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=60&auto=format&fit=crop&w=600',
+      'https://images.unsplash.com/photo-1617137968427-85924c800a22?q=60&auto=format&fit=crop&w=600',
+    ],
+  }
+
+  const heroImages: string[] = [
+    'https://images.unsplash.com/photo-1549880338-65ddcdfd017b?q=60&auto=format&fit=crop&w=1600',
+    'https://images.unsplash.com/photo-1542751110-97427bbecf20?q=60&auto=format&fit=crop&w=1600',
+    'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?q=60&auto=format&fit=crop&w=1600',
+    'https://images.unsplash.com/photo-1520975922323-5ee30f0b57b4?q=60&auto=format&fit=crop&w=1600',
+    'https://images.unsplash.com/photo-1493666438817-866a91353ca9?q=60&auto=format&fit=crop&w=1600',
+    'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?q=60&auto=format&fit=crop&w=1600',
+  ]
+
+  const [heroIndex, setHeroIndex] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setHeroIndex((i) => (i + 1) % heroImages.length)
+    }, 5000)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navbar */}
@@ -28,10 +73,21 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Soft gradient backdrop */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-24 -right-24 size-[28rem] rounded-full bg-primary/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 size-[28rem] rounded-full bg-muted blur-3xl" />
+        {/* Background slideshow */}
+        <div className="absolute inset-0 -z-10">
+          {heroImages.map((src, idx) => (
+            <div
+              key={src}
+              className={`absolute inset-0 transition-opacity duration-700 ease-out ${idx === heroIndex ? 'opacity-100' : 'opacity-0'}`}
+              style={{
+                backgroundImage: (`${src}`),
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+          ))}
+          {/* Gradient scrim for readability */}
+          <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px]" />
         </div>
         <div className="relative py-16 sm:py-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-10 items-center">
@@ -60,12 +116,8 @@ export default function LandingPage() {
               <div className="absolute -top-10 -left-10 size-40 rounded-full bg-muted" />
               <div className="absolute -bottom-16 -right-16 size-64 rounded-full bg-muted" />
               <div className="relative grid grid-cols-2 gap-4">
-                {['Cameras','Tools','Furniture','Gaming'].map((t) => (
-                  <div key={t} className="rounded-lg border bg-white p-6 transition-transform hover:-translate-y-1 hover:shadow-sm">
-                    <div className="h-24 rounded-md bg-muted" />
-                    <div className="mt-3 font-medium">{t}</div>
-                    <div className="text-sm text-muted-foreground">From $5/day</div>
-                  </div>
+                {(['Cameras','Tools','Furniture','Console'] as CategoryKey[]).map((t) => (
+                  <CategoryCard key={t} title={t} sources={categorySources[t]} />
                 ))}
               </div>
             </div>
@@ -115,12 +167,17 @@ export default function LandingPage() {
             <Link to="/login"><Button variant="outline">See all (login)</Button></Link>
           </div>
           <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1,2,3,4].map((i) => (
-              <div key={i} className="group rounded-lg border bg-white overflow-hidden transition-shadow hover:shadow-sm">
-                <div className="h-36 bg-muted" />
+            {([
+              { title: '4K Mirrorless Camera', key: 'Cameras', price: 18 },
+              { title: 'Pro Tool Kit', key: 'Tools', price: 12 },
+              { title: 'Modern Lounge Chair', key: 'Furniture', price: 9 },
+              { title: 'Next‑gen Console', key: 'Console', price: 15 },
+            ] as Array<{ title: string; key: CategoryKey; price: number }>).map((card) => (
+              <div key={card.title} className="group rounded-lg border bg-white overflow-hidden transition-shadow hover:shadow-sm">
+                <CategoryImage title={card.key} sources={categorySources[card.key]} className="h-36 w-full" />
                 <div className="p-4">
-                  <div className="font-medium">Item #{i}</div>
-                  <div className="text-sm text-muted-foreground">From $8/day</div>
+                  <div className="font-medium">{card.title}</div>
+                  <div className="text-sm text-muted-foreground">From ₹{`${''}`.length ? card.price : card.price}/day</div>
                   <div className="mt-3">
                     <Link to="/login"><Button size="sm" variant="outline">View</Button></Link>
                   </div>
@@ -209,6 +266,45 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+// Reusable category image with fallback and responsive cover
+function CategoryImage({ title, sources, className }: { title: CategoryKey; sources: string[]; className?: string }) {
+  const [idx, setIdx] = useState(0)
+  const fallback = useMemo(() => {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='600' height='240'>
+      <defs>
+        <linearGradient id='g' x1='0' x2='1' y1='0' y2='1'>
+          <stop offset='0%' stop-color='#e0e7ff'/>
+          <stop offset='100%' stop-color='#fdf2f8'/>
+        </linearGradient>
+      </defs>
+      <rect width='100%' height='100%' fill='url(#g)'/>
+      <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#111827' font-size='28' font-family='sans-serif'>${title}</text>
+    </svg>`
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+  }, [title])
+
+  const src = idx < sources.length ? sources[idx] : fallback
+  return (
+    <img
+      src={src}
+      alt={`${title} category`}
+      loading="lazy"
+      className={(className ?? '') + ' object-cover'}
+      onError={() => setIdx((i) => i + 1)}
+    />
+  )
+}
+
+function CategoryCard({ title, sources }: { title: CategoryKey; sources: string[] }) {
+  return (
+    <div className="rounded-lg border bg-white p-3 transition-transform hover:-translate-y-1 hover:shadow-sm">
+      <CategoryImage title={title} sources={sources} className="h-24 w-full" />
+      <div className="mt-3 font-medium">{title}</div>
+                    <div className="text-sm text-muted-foreground">From ₹5/day</div>
     </div>
   )
 }
