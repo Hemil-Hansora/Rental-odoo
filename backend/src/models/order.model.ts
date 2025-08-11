@@ -103,6 +103,7 @@ const orderMongooseSchema = new Schema<OrderDocument>({
     reason: { type: String },
     refundAmount: { type: Number },
   },
+   isOverdueNotified: { type: Boolean, default: false } 
 }, { timestamps: true });
 
 // MODEL

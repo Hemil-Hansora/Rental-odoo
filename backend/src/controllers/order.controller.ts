@@ -54,6 +54,7 @@ export const createOrderFromQuotation = asyncHandler(async (req: Request, res: R
             return: { scheduledAt: quotation.items[0].end },
             delivery: { method: 'pickup' },
         });
+        console.log(order)
         await order.save({ session });
 
         
