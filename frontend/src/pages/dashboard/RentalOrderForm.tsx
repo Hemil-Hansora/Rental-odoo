@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button } from '../../components/ui/button';
+import { ChevronDown } from 'lucide-react';
 
 export default function RentalOrderForm() {
   const { id } = useParams();
@@ -10,6 +11,8 @@ export default function RentalOrderForm() {
   const [loading, setLoading] = useState(true);
   const [allIds, setAllIds] = useState<string[]>([]);
   const [currentIdx, setCurrentIdx] = useState<number>(-1);
+  const [updating, setUpdating] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -40,6 +43,21 @@ export default function RentalOrderForm() {
     if (currentIdx < allIds.length-1) navigate(`/dashboard/rental-order/${allIds[currentIdx+1]}`);
   };
 
+  const handleStatusChange = async (newStatus: 'approved' | 'rejected' | 'sent' | 'cancelled_by_customer') => {
+    if (!id) return;
+    try {
+      setUpdating(true);
+      const res = await api.patch(`/api/v1/quotation/status/${id}`, { status: newStatus });
+      const updated = res.data?.data;
+      if (updated) setOrder(updated);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || 'Failed to update status';
+      alert(msg);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">Loading…</div>;
   if (!order) return <div className="p-8 text-center text-red-600">Order not found</div>;
 
@@ -63,7 +81,26 @@ export default function RentalOrderForm() {
           <Button onClick={goPrev} disabled={currentIdx<=0}>{'<'}</Button>
           <Button onClick={goNext} disabled={currentIdx>=allIds.length-1}>{'>'}</Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="relative">
+            <Button onClick={() => setMenuOpen(o => !o)} disabled={updating} className="bg-green-500 text-white inline-flex items-center gap-2">
+              Update Status <ChevronDown className="w-4 h-4" />
+            </Button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-md z-20">
+                {(['approved','rejected','sent'] as const).map(s => (
+                  <button
+                    key={s}
+                    disabled={updating || order?.status === s}
+                    onClick={() => { setMenuOpen(false); handleStatusChange(s); }}
+                    className="block w-full text-left px-3 py-2 hover:bg-gray-100 disabled:opacity-50 capitalize"
+                  >
+                    {s.replaceAll('_',' ')}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Button className="bg-purple-300 text-purple-900">Invoice</Button>
           <Button className="bg-pink-200 text-pink-900">Pickup</Button>
           <Button className="bg-pink-200 text-pink-900">Print</Button>
