@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -22,15 +21,13 @@ const signupSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters long." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
   phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters long." }),
-  // Match backend model: role is 'customer' | 'end_user'
-  role: z.enum(["customer", "end_user"]),
+  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
+  role: z.enum(["end-user", "customer"]), // <- no second argument here
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
-  const navigate = useNavigate();
  
   const {
     register,
@@ -44,15 +41,14 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [apiError, setApiError] = React.useState<string | null>(null);
 
-  
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
     setApiError(null);
     try {
-      // Real signup call
-      await api.post("/api/v1/user/signup", data);
-      alert("Registration successful. Please log in.");
-      navigate("/login", { replace: true });
+   
+      await new Promise((res) => setTimeout(res, 600));
+      console.log("Form submitted (frontend only):", data);
+      alert("Registration simulated (frontend only). You can wire backend later.");
     } catch (err) {
       const message = (err as any)?.response?.data?.message || "Something went wrong. Please try again.";
       setApiError(message);
@@ -71,7 +67,6 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="px-8 py-6 space-y-4">
-            {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" placeholder="vrund patel" {...register("name")} />
@@ -80,7 +75,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -94,7 +88,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Phone */}
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
               <Input id="phone" placeholder="1234567890" {...register("phone")} />
@@ -103,7 +96,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Role select */}
             <div className="space-y-2">
               <Label htmlFor="role">Register as</Label>
               <select
@@ -122,7 +114,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -136,7 +127,19 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* API / submit error */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                {...register("confirmPassword")}
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
             {apiError && <p className="text-red-500 text-sm text-center">{apiError}</p>}
           </CardContent>
 
