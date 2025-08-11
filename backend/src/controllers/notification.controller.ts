@@ -23,7 +23,7 @@ export const sendNotification = async (
     scheduledAt: Date = new Date()                // default to now
 ) => {
     try {
-        // 1. Save the notification to the database
+        // Default channel and scheduledAt if missing
         const notification = await Notification.create({
             recipient: recipientId,
             type,

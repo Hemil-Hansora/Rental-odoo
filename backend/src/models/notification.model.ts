@@ -16,7 +16,7 @@ export const NotificationValidationSchema = z.object({
     "order_overdue"
   ]),
   recipient: zodObjectId,
-  channel: z.enum(['email', 'push']),
+  channel: z.enum(['email', 'push', 'in-app']),
   payload: z.record(z.any()),
   scheduledAt: z.date(),
   sentAt: z.date().optional(),
@@ -38,7 +38,7 @@ const notificationMongooseSchema = new Schema<NotificationDocument>({
 },
   // @ts-ignore
   recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  channel: { type: String, enum: ['email', 'push'], required: true },
+  channel: { type: String, enum: ['email', 'push', 'in-app'], required: true },
   payload: { type: Schema.Types.Mixed, required: true },
   scheduledAt: { type: Date, required: true },
   sentAt: { type: Date },
