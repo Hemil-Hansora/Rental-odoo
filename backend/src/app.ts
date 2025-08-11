@@ -17,9 +17,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 import userRouter from "./routes/user.routes";
+import productRouter from "./routes/product.routes";
+import categoryRouter from "./routes/category.routes";
 
 
 app.use("/api/v1/user", userRouter);
+app.use("/api/v1/product", productRouter);
+app.use("/api/v1/category", categoryRouter);
 
 
 

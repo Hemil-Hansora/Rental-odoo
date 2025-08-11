@@ -6,9 +6,9 @@ import {
     updateProduct,
     deleteProduct,
     checkProductAvailability,
-} from "../controllers/product.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { upload } from "../middlewares/multer.middleware.js";
+} from "../controllers/product.controller";
+import { verifyJWT } from "../middlewares/auth.middleware";
+import { upload } from "../middlewares/multer.middleware";
 
 const router = Router();
 

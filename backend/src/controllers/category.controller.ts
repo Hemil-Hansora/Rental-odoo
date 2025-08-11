@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import slugify from 'slugify';
-import { Category, CategoryValidationSchema } from '../models/category.model.js';
-import { Product } from '../models/product.model.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
+import { Category, CategoryValidationSchema } from '../models/category.model';
+import { Product } from '../models/product.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse';
 
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
     const { name, description, parentCategory } = req.body;
