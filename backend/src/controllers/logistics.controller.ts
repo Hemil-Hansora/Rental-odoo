@@ -12,7 +12,7 @@ import { ApiResponse } from '../utils/apiResponse';
  * @access  Private (Customer only)
  */
 export const createDeliveryNote = asyncHandler(async (req: Request, res: Response) => {
-    const { orderId, type, scheduledAt, driver, vehicle, checklist } = req.body;
+    const { orderId, type, scheduledAt, checklist } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
         throw new ApiError(400, "Invalid Order ID");
@@ -29,8 +29,6 @@ export const createDeliveryNote = asyncHandler(async (req: Request, res: Respons
         order: orderId,
         type, // 'pickup' or 'delivery'
         scheduledAt: scheduledAt || (type === 'pickup' ? order.pickup.scheduledAt : order.return.scheduledAt),
-        driver,
-        vehicle,
         checklist,
         status: 'scheduled'
     });
