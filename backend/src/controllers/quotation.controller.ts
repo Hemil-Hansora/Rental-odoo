@@ -140,8 +140,11 @@ export const createQuotation = asyncHandler(async (req: Request, res: Response) 
 
 
 export const getAllQuotationsForUser = asyncHandler(async (req: Request, res: Response) => {
-    // Return all quotations for all users (no filter)
-    const quotations = await Quotation.find({})
+    const query = req.user?.role === 'end_user' 
+        ? { vendor: req.user?._id }
+        : { createdBy: req.user?._id };
+
+    const quotations = await Quotation. find(query)
         .populate('items.product', 'name images')
         .populate('vendor', 'name email')
         .populate('createdBy', 'name email')
