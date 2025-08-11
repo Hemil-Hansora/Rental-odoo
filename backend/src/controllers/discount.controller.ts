@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { DiscountRule, DiscountRuleValidationSchema } from '../models/discountRule.model.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
+import { DiscountRule, DiscountRuleValidationSchema } from '../models/discountRule.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse';
 
 /**
  * @desc    Create a new discount rule/coupon

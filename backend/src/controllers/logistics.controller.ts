@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { DeliveryNote } from '../models/deliveryNote.model.js';
-import { Order } from '../models/order.model.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
+import { DeliveryNote } from '../models/deliveryNote.model';
+import { Order } from '../models/order.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse';
 
 /**
  * @desc    Create a new delivery note for an order

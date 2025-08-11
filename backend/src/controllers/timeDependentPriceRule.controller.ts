@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { TimeDependentPriceRule, TimeDependentPriceRuleValidationSchema } from '../models/timeDependentPriceRule.model.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
-import { ApiResponse } from '../utils/apiResponse.js';
+import { TimeDependentPriceRule, TimeDependentPriceRuleValidationSchema } from '../models/timeDependentPriceRule.model';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse'
 
 /**
  * @desc    Create a new time-dependent price rule
