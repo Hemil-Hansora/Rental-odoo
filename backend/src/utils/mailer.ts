@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-    host: process.env.MAIL_HOST,
+    host: process.env.MAIL_HOST || "sandbox.smtp.mailtrap.io",
     port: parseInt(process.env.MAIL_PORT || "2525"),
     auth: {
       user: process.env.MAIL_USER,
@@ -16,14 +16,13 @@ interface MailOptions {
 }
 
 export const sendEmail = async (options: MailOptions) => {
-    try {
+    try {   
         const mailOptions = {
             from: '"Your Rental App" <no-reply@rentalapp.com>',
             to: options.to,
             subject: options.subject,
             html: options.html,
         };
-
         const info = await transporter.sendMail(mailOptions);
         console.log("Message sent: %s", info.messageId);
         return info;
