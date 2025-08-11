@@ -7,6 +7,7 @@ import { User, UserDocument } from "../models/user.model"; // Adjust path as nee
 import { asyncHandler } from "../utils/asyncHandler"; // Adjust path as needed
 import { ApiError } from "../utils/apiError"; // Adjust path as needed
 import { ApiResponse } from "../utils/apiResponse"; // Adjust path as needed
+import { sendEmail } from "../utils/mailer";
 
 // --- Helper Function to Generate Tokens ---
 
@@ -49,11 +50,16 @@ const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessT
 
 // Zod schema for signup request body validation
 const signupBodySchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters long"),
-  email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
-  role:z.string()
+    name: z.string().min(2, "Name must be at least 2 characters long"),
+    email: z.string().email("Please enter a valid email address"),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+    // Accept both 'end_user' and legacy 'end-user', normalize to 'end_user'
+    role: z.union([
+        z.literal('customer'),
+        z.literal('end_user'),
+        z.literal('end-user')
+    ]).transform((v) => (v === 'end-user' ? 'end_user' : v)),
 });
 
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
@@ -87,6 +93,17 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
 
     if (!createdUser) {
         throw new ApiError(500, "Failed to create user");
+    }
+
+    try {
+        await sendEmail({
+            to: createdUser.email,
+            subject: "Welcome to Our Rental App!",
+            html: `<h1>Hi ${createdUser.name},</h1><p>Thank you for joining us.</p>`
+        });
+    } catch (emailError) {
+        // Don't block the user registration if email fails. Just log the error.
+        console.error(`Failed to send welcome email to ${createdUser.email}`, emailError);
     }
 
     // 6. Send the successful response

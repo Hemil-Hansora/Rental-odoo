@@ -20,7 +20,7 @@ export const createInvoiceFromOrder = asyncHandler(async (req: Request, res: Res
         throw new ApiError(404, "Order not found");
     }
 
-    // 2. Check if an invoice already exists for this order
+    
     const existingInvoice = await Invoice.findOne({ order: orderId });
     if (existingInvoice) {
         throw new ApiError(409, "An invoice already exists for this order.");
@@ -51,11 +51,7 @@ export const createInvoiceFromOrder = asyncHandler(async (req: Request, res: Res
         .json(new ApiResponse(201, invoice, "Invoice created successfully"));
 });
 
-/**
- * @desc    Get all invoices
- * @route   GET /api/v1/invoices
- * @access  Private (Customer only)
- */
+
 export const getAllInvoices = asyncHandler(async (req: Request, res: Response) => {
     const invoices = await Invoice.find({})
         .populate({

@@ -90,11 +90,11 @@ export default function UserDashboard() {
   // Fetch products and categories
   useEffect(() => {
     if (activeSection !== 'products') return
-    const fetchAll = async () => {
+  const fetchAll = async () => {
       try {
         setLoadingProducts(true)
         const [prodRes, catRes] = await Promise.all([
-          api.get('/api/v1/product/all-product', { params: { search: prodQuery, limit: 50 } }),
+      api.get('/api/v1/product/my-products', { params: { search: prodQuery, limit: 50 } }),
           api.get('/api/v1/category/all-categories'),
         ])
         const list: Product[] = prodRes.data?.data?.products ?? []
