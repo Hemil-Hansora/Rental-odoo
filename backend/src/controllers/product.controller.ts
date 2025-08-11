@@ -6,37 +6,46 @@ import { Reservation } from '../models/reservation.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
 import { ApiResponse } from '../utils/apiResponse.js';
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
 
 type CreateProductBody = z.infer<typeof ProductValidationSchema>;
 
-export const createProduct = asyncHandler(async (req: Request<{}, {}, CreateProductBody>, res: Response) => {
-    const parsedBody = ProductValidationSchema.safeParse(req.body);
-    if (!parsedBody.success) {
-        throw new ApiError(400, 'Invalid product data', parsedBody.error.errors);
+export const createProduct = asyncHandler(async (req: Request, res: Response) => {
+    const validationResult = ProductValidationSchema.omit({ images: true }).safeParse(req.body);
+    if (!validationResult.success) {
+        throw new ApiError(400, "Invalid product data", validationResult.error.errors);
+    }
+    
+    const productData = validationResult.data;
+
+    // --- Image Upload Logic ---
+    const imageFiles = req.files as Express.Multer.File[];
+    if (!imageFiles || imageFiles.length === 0) {
+        throw new ApiError(400, "At least one product image is required");
     }
 
-    const { name, sku } = parsedBody.data;
-
-    const conflictQuery = [];
-    if (name) conflictQuery.push({ name });
-    if (sku) conflictQuery.push({ sku });
-
-    const existingProduct = await Product.findOne({ $or: conflictQuery });
-
-    if (existingProduct) {
-        const conflictField = existingProduct.name === name ? `name '${name}'` : `SKU '${sku}'`;
-        throw new ApiError(409, `Product with ${conflictField} already exists.`);
+    const imageUrls: string[] = [];
+    for (const file of imageFiles) {
+        const cloudinaryResponse = await uploadOnCloudinary(file.path);
+        if (cloudinaryResponse) {
+            imageUrls.push(cloudinaryResponse.secure_url);
+        }
     }
-
-    const product = await Product.create(parsedBody.data);
-    if (!product) {
-        throw new ApiError(500, 'Something went wrong while creating the product');
+    
+    if (imageUrls.length === 0) {
+        throw new ApiError(500, "Failed to upload images");
     }
+    // --- End of Image Upload Logic ---
 
-    // 4. Send response
+
+    const product = await Product.create({
+        ...productData,
+        images: imageUrls, // Add the array of image URLs
+    });
+
     return res
         .status(201)
-        .json(new ApiResponse(201, product, 'Product created successfully'));
+        .json(new ApiResponse(201, product, "Product created successfully"));
 });
 
 
@@ -200,11 +209,7 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
         .json(new ApiResponse(200, product, 'Product updated successfully'));
 });
 
-/**
- * @desc    Delete a product by its ID
- * @route   DELETE /api/v1/products/:id
- * @access  Private (Admin)
- */
+
 export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -232,7 +237,6 @@ export const deleteProduct = asyncHandler(async (req: Request, res: Response) =>
         .json(new ApiResponse(200, { id }, 'Product deleted successfully'));
 });
 
-// Zod schema for validating availability query parameters
 const AvailabilityQuerySchema = z.object({
     startDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
     endDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
@@ -242,18 +246,13 @@ const AvailabilityQuerySchema = z.object({
     path: ['endDate'],
 });
 
-/**
- * @desc    Check product availability for a given date range
- * @route   GET /api/v1/products/:id/availability
- * @access  Public
- */
+
 export const checkProductAvailability = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new ApiError(400, 'Invalid product ID');
     }
 
-    // 1. Validate query parameters using Zod
     const queryParseResult = AvailabilityQuerySchema.safeParse(req.query);
     if (!queryParseResult.success) {
         throw new ApiError(400, "Invalid query parameters", queryParseResult.error.errors);
@@ -262,13 +261,11 @@ export const checkProductAvailability = asyncHandler(async (req: Request, res: R
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    // 2. Fetch the product
     const product = await Product.findById(id).select('stock maintenanceBlocks');
     if (!product) {
         throw new ApiError(404, 'Product not found');
     }
 
-    // 3. Check for maintenance block conflicts
     const inMaintenance = product.maintenanceBlocks.some((block:any) =>
         block.start < end && block.end > start
     );
@@ -277,14 +274,13 @@ export const checkProductAvailability = asyncHandler(async (req: Request, res: R
         return res.status(200).json(new ApiResponse(200, {available: false,reason: 'Product is scheduled for maintenance during this period.',availableStock: 0}, 'Availability check successful'));
     }
 
-    // 4. Use an aggregation pipeline to efficiently calculate reserved quantity
     const reservedCountPipeline: PipelineStage[] = [
         {
             $match: {
                 'items.product': new mongoose.Types.ObjectId(id),
-                status: { $nin: ['Returned', 'Cancelled'] }, // Exclude completed or voided reservations
-                startDate: { $lt: end },   // Overlap condition
-                endDate: { $gt: start }    // Overlap condition
+                status: { $nin: ['Returned', 'Cancelled'] }, 
+                startDate: { $lt: end },  
+                endDate: { $gt: start }   
             }
         },
         { $unwind: '$items' },
