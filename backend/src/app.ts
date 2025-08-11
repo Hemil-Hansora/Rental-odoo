@@ -20,11 +20,13 @@ import userRouter from "./routes/user.routes";
 import productRouter from "./routes/product.routes";
 import categoryRouter from "./routes/category.routes";
 import orderRouter from "./routes/order.routes";
+import quotationRouter from "./routes/quotation.routes";
 
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/order", orderRouter);
+app.use("/api/v1/quotation", quotationRouter);
 
 
 
