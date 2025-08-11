@@ -13,7 +13,7 @@ const router = Router();
 router.use(verifyJWT);
 
 
-router.route('/from-quotation').post(
+router.route('/create-quotation').post(
     authorizeRoles('customer'), 
     createOrderFromQuotation
 );
