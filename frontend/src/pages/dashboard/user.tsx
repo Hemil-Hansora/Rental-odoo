@@ -36,6 +36,20 @@ function ProductsSection() {
     pricePerDay: '',
     pricePerWeek: '',
   })
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    sku: '',
+    description: '',
+    stock: 0,
+    unit: 'piece',
+    pricePerHour: '',
+    pricePerDay: '',
+    pricePerWeek: '',
+    image: null as File | null,
+  })
+  const [createPreview, setCreatePreview] = useState<string | null>(null)
 
   const loadProducts = async () => {
     try {
@@ -104,10 +118,43 @@ function ProductsSection() {
     }
   }
 
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!createForm.name || !createForm.image || (!createForm.pricePerDay && !createForm.pricePerHour && !createForm.pricePerWeek)) {
+      alert('Name, at least one price, and one image are required.')
+      return
+    }
+    try {
+      setCreating(true)
+      const fd = new FormData()
+      fd.append('name', createForm.name)
+      if (createForm.sku) fd.append('sku', createForm.sku)
+      if (createForm.description) fd.append('description', createForm.description)
+      fd.append('stock', String(createForm.stock))
+      if (createForm.unit) fd.append('unit', createForm.unit)
+      if (createForm.pricePerHour) fd.append('pricing.pricePerHour', createForm.pricePerHour)
+      if (createForm.pricePerDay) fd.append('pricing.pricePerDay', createForm.pricePerDay)
+      if (createForm.pricePerWeek) fd.append('pricing.pricePerWeek', createForm.pricePerWeek)
+      if (createForm.image) fd.append('images', createForm.image)
+
+      await api.post('/api/v1/product/create-product', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      setShowCreate(false)
+      setCreateForm({ name: '', sku: '', description: '', stock: 0, unit: 'piece', pricePerHour: '', pricePerDay: '', pricePerWeek: '', image: null })
+      setCreatePreview(null)
+      await loadProducts()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to create product'
+      alert(msg)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">My Products</h2>
+        <Button onClick={() => setShowCreate(true)}>Add Product</Button>
       </div>
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -178,6 +225,66 @@ function ProductsSection() {
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCreate(false)} />
+          <div className="relative z-50 bg-white w-full max-w-lg rounded-md shadow p-6 space-y-4">
+            <h3 className="text-lg font-semibold">Add Product</h3>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="c-name">Name</Label>
+                  <Input id="c-name" value={createForm.name} onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))} required />
+                </div>
+                <div>
+                  <Label htmlFor="c-sku">SKU</Label>
+                  <Input id="c-sku" value={createForm.sku} onChange={e => setCreateForm(f => ({ ...f, sku: e.target.value }))} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="c-desc">Description</Label>
+                  <Input id="c-desc" value={createForm.description} onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="c-stock">Stock</Label>
+                  <Input id="c-stock" type="number" value={createForm.stock} onChange={e => setCreateForm(f => ({ ...f, stock: Number(e.target.value) }))} required />
+                </div>
+                <div>
+                  <Label htmlFor="c-unit">Unit</Label>
+                  <Input id="c-unit" value={createForm.unit} onChange={e => setCreateForm(f => ({ ...f, unit: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="c-pph">Price / Hour</Label>
+                  <Input id="c-pph" type="number" value={createForm.pricePerHour} onChange={e => setCreateForm(f => ({ ...f, pricePerHour: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="c-ppd">Price / Day</Label>
+                  <Input id="c-ppd" type="number" value={createForm.pricePerDay} onChange={e => setCreateForm(f => ({ ...f, pricePerDay: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="c-ppw">Price / Week</Label>
+                  <Input id="c-ppw" type="number" value={createForm.pricePerWeek} onChange={e => setCreateForm(f => ({ ...f, pricePerWeek: e.target.value }))} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="c-image">Image</Label>
+                  <Input id="c-image" type="file" accept="image/*" onChange={e => {
+                    const file = e.target.files?.[0] || null
+                    setCreateForm(f => ({ ...f, image: file || null }))
+                    if (file) setCreatePreview(URL.createObjectURL(file)); else setCreatePreview(null)
+                  }} />
+                  {createPreview && (
+                    <img src={createPreview} alt="Preview" className="mt-2 w-full h-32 object-cover rounded" />
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+                <Button type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create'}</Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
