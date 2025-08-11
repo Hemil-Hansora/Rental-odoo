@@ -4,8 +4,8 @@ import { api } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Heart, Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
-import { daysBetweenInclusive, calculateCouponDiscount, addToCart as addToCartLS } from '@/lib/utils'
+import { Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
+import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
 
 type APIProduct = {
   _id: string
@@ -28,7 +28,6 @@ export default function ProductDetailPage() {
   const [product, setProduct] = React.useState<APIProduct | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [wish, setWish] = React.useState(false)
   const [qty, setQty] = React.useState(1)
   const [coupon, setCoupon] = React.useState('')
   const [couponApplied, setCouponApplied] = React.useState(false)
