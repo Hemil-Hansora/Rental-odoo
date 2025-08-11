@@ -9,7 +9,7 @@ import { ApiError } from "../utils/apiError"; // Adjust path as needed
 import { ApiResponse } from "../utils/apiResponse"; // Adjust path as needed
 
 // --- Helper Function to Generate Tokens ---
-
+    
 const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessToken: string; refreshToken: string }> => {
     try {
         const user = await User.findById(userId);
@@ -38,12 +38,6 @@ const generateAccessAndRefreshTokens = async (userId: string): Promise<{ accessT
             refreshTokenSecret ,
             { expiresIn: process.env.REFRESH_TOKEN_EXPIRY || "10d" } as SignOptions
         );
-        
-        // Storing the refresh token in the database adds a layer of security
-        // Note: You would need to add `refreshToken: { type: String }` to your User schema
-        // user.refreshToken = refreshToken; 
-        // await user.save({ validateBeforeSave: false });
-
         return { accessToken, refreshToken };
 
     } catch (error) {
