@@ -17,17 +17,26 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { api } from "@/lib/api";
 
-const signupSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters long." }),
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
-  role: z.enum(["end-user", "customer"]), // <- no second argument here
-});
+const signupSchema = z
+  .object({
+    name: z.string().min(2, { message: "Name must be at least 2 characters long." }),
+    email: z.string().email({ message: "Please enter a valid email address." }),
+    phone: z.string().min(10, { message: "Phone number must be at least 10 digits." }),
+    password: z.string().min(8, { message: "Password must be at least 8 characters long." }),
+    confirmPassword: z.string().min(8, { message: "Confirm password must be at least 8 characters long." }),
+    // Backend expects 'customer' | 'end_user'
+    role: z.enum(["customer", "end_user"]),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match.",
+  })
+;
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  const navigate = useNavigate();
  
   const {
     register,
@@ -35,7 +44,7 @@ export default function SignupPage() {
     formState: { errors },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { role: "customer" },
+  defaultValues: { role: "customer" } as Partial<SignupFormValues>,
   });
 
   const [isLoading, setIsLoading] = React.useState(false);
@@ -45,10 +54,10 @@ export default function SignupPage() {
     setIsLoading(true);
     setApiError(null);
     try {
-   
-      await new Promise((res) => setTimeout(res, 600));
-      console.log("Form submitted (frontend only):", data);
-      alert("Registration simulated (frontend only). You can wire backend later.");
+  const { confirmPassword, ...payload } = data;
+  await api.post("/api/v1/user/signup", payload);
+  alert("Registration successful. Please log in.");
+  navigate("/login", { replace: true });
     } catch (err) {
       const message = (err as any)?.response?.data?.message || "Something went wrong. Please try again.";
       setApiError(message);
