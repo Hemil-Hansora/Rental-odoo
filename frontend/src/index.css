@@ -145,3 +145,47 @@
 .card-accent {
   border-top: 3px solid var(--primary);
 }
+
+/* Custom styles for the dual-thumb range slider */
+.thumb {
+  pointer-events: none;
+  position: absolute;
+  height: 0;
+  width: 100%;
+  outline: none;
+}
+
+.thumb--left {
+  z-index: 3;
+}
+
+.thumb--right {
+  z-index: 4;
+}
+
+/* For Chrome, Safari, etc. */
+.thumb::-webkit-slider-thumb {
+  background-color: hsl(var(--primary));
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0 1px 1px #ced4da;
+  cursor: pointer;
+  height: 16px;
+  width: 16px;
+  margin-top: 4px;
+  pointer-events: all;
+  position: relative;
+}
+
+/* For Firefox */
+.thumb::-moz-range-thumb {
+  background-color: hsl(var(--primary));
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0 1px 1px #ced4da;
+  cursor: pointer;
+  height: 16px;
+  width: 16px;
+  pointer-events: all;
+  position: relative;
+}
