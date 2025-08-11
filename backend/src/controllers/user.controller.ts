@@ -207,7 +207,6 @@ export const updateUserDetails = asyncHandler(async (req: Request, res: Response
     }
     const { name, phone, address, billingInfo, preferences } = validationResult.data;
 
-    
     const updateData: { [key: string]: any } = {};
 
     if (name) updateData.name = name;
