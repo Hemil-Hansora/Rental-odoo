@@ -211,7 +211,7 @@ export default function CustomerDashboard() {
               <button onClick={() => navigate('/cart')} className="inline-flex items-center gap-1 hover:underline" title="Cart">
                 <ShoppingCart className="size-4" /> Cart ({cartCount})
               </button>
-              <a href="#review" className="hover:underline">
+              <a href="/orders/review" className="hover:underline">
                 Review order
               </a>
               <a

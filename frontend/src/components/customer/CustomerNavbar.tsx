@@ -55,7 +55,26 @@ export default function CustomerNavbar() {
             <button onClick={() => navigate('/cart')} className="inline-flex items-center gap-1 hover:underline" title="Cart">
               <ShoppingCart className="size-4"/> Cart ({cartCount})
             </button>
+            <a
+              href="#review"
+              onClick={(e) => {
+                e.preventDefault();
+                if (user?.role === 'end_user') {
+                  navigate('/quotations/approved-products');
+                } else {
+                  navigate('/orders/review');
+                }
+              }}
+              className="inline-flex items-center gap-1 hover:underline"
+            >
+              Review order
+            </a>
             <a href="#contact" onClick={(e) => { e.preventDefault(); navigate('/dashboard/customer#contact') }} className="inline-flex items-center gap-1 hover:underline"><Phone className="size-4"/> Contact us</a>
+            {user?.role === 'end_user' && (
+              <button onClick={() => navigate('/quotations/approved-products')} className="inline-flex items-center gap-1 hover:underline" title="Approved quotation products">
+                Approved
+              </button>
+            )}
           </nav>
         </div>
         <div className="relative">
