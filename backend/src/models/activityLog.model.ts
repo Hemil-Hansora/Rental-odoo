@@ -19,6 +19,7 @@ export type ActivityLogDocument = IActivityLog & Document;
 const activityLogMongooseSchema = new Schema<ActivityLogDocument>({
   entityType: { type: String, required: true },
   // @ts-ignore
+  // @ts-ignore
   entityId: { type: Schema.Types.ObjectId, required: true },
   action: { type: String, required: true },
   //@ts-ignore
