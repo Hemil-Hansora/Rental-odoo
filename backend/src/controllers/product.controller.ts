@@ -11,7 +11,18 @@ import { uploadOnCloudinary } from '../utils/cloudinary';
 type CreateProductBody = z.infer<typeof ProductValidationSchema>;
 
 export const createProduct = asyncHandler(async (req: Request, res: Response) => {
-    const validationResult = ProductValidationSchema.omit({ images: true }).safeParse(req.body);
+    // Convert strings from form-data into correct types
+    const parsedBody = {
+        ...req.body,
+        stock: Number(req.body.stock),
+        pricing: {
+            pricePerHour: req.body["pricing.pricePerHour"] ? Number(req.body["pricing.pricePerHour"]) : undefined,
+            pricePerDay: req.body["pricing.pricePerDay"] ? Number(req.body["pricing.pricePerDay"]) : undefined,
+            pricePerWeek: req.body["pricing.pricePerWeek"] ? Number(req.body["pricing.pricePerWeek"]) : undefined,
+        }
+    };
+
+    const validationResult = ProductValidationSchema.omit({ images: true }).safeParse(parsedBody);
     if (!validationResult.success) {
         throw new ApiError(400, "Invalid product data", validationResult.error.errors);
     }
@@ -37,16 +48,16 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     }
     // --- End of Image Upload Logic ---
 
-
     const product = await Product.create({
         ...productData,
-        images: imageUrls, // Add the array of image URLs
+        images: imageUrls,
     });
 
     return res
         .status(201)
         .json(new ApiResponse(201, product, "Product created successfully"));
 });
+
 
 
 export const getAllProducts = asyncHandler(async (req: Request, res: Response) => {
@@ -176,6 +187,7 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
     }
 
     const parsedBody = ProductValidationSchema.partial().safeParse(req.body);
+    console.log("Parsed Body:", parsedBody);
     if (!parsedBody.success) {
         throw new ApiError(400, 'Invalid update data', parsedBody.error.errors);
     }
@@ -253,60 +265,89 @@ export const checkProductAvailability = asyncHandler(async (req: Request, res: R
         throw new ApiError(400, 'Invalid product ID');
     }
 
-    const queryParseResult = AvailabilityQuerySchema.safeParse(req.query);
-    if (!queryParseResult.success) {
-        throw new ApiError(400, "Invalid query parameters", queryParseResult.error.errors);
-    }
-    const { startDate, endDate, quantity: requestedQuantity } = queryParseResult.data;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
     const product = await Product.findById(id).select('stock maintenanceBlocks');
     if (!product) {
         throw new ApiError(404, 'Product not found');
     }
 
-    const inMaintenance = product.maintenanceBlocks.some((block:any) =>
-        block.start < end && block.end > start
-    );
+    const { startDate, endDate } = req.query;
 
-    if (inMaintenance) {
-        return res.status(200).json(new ApiResponse(200, {available: false,reason: 'Product is scheduled for maintenance during this period.',availableStock: 0}, 'Availability check successful'));
-    }
-
-    const reservedCountPipeline: PipelineStage[] = [
-        {
-            $match: {
-                'items.product': new mongoose.Types.ObjectId(id),
-                status: { $nin: ['Returned', 'Cancelled'] }, 
-                startDate: { $lt: end },  
-                endDate: { $gt: start }   
-            }
-        },
-        { $unwind: '$items' },
-        {
-            $match: {
-                'items.product': new mongoose.Types.ObjectId(id)
-            }
-        },
-        {
-            $group: {
-                _id: null, // Group all matched items together
-                totalReserved: { $sum: '$items.quantity' }
-            }
+    // SCENARIO 1: A specific date range is provided for a future booking.
+    if (startDate && endDate) {
+        const queryParseResult = AvailabilityQuerySchema.safeParse(req.query);
+        if (!queryParseResult.success) {
+            throw new ApiError(400, "Invalid query parameters", queryParseResult.error.errors);
         }
-    ];
 
-    const reservationResult = await Reservation.aggregate(reservedCountPipeline);
-    const reservedCount = reservationResult[0]?.totalReserved || 0;
+        const { quantity: requestedQuantity } = queryParseResult.data;
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
 
-    // 5. Determine final availability
-    const availableStock = product.stock - reservedCount;
-    const isAvailable = availableStock >= requestedQuantity;
+        // Check for maintenance block conflicts
+        const inMaintenance = product.maintenanceBlocks.some((block: any) =>
+            block.start < end && block.end > start
+        );
 
-    return res.status(200).json(new ApiResponse(200, {
-        available: isAvailable,
-        reason: isAvailable ? 'Product is available.' : `Insufficient stock. Only ${availableStock} units are available for this period.`,
-        availableStock
-    }, 'Availability check successful'));
+        if (inMaintenance) {
+            return res.status(200).json(new ApiResponse(200, {
+                available: false,
+                reason: 'Product is scheduled for maintenance during this period.',
+                availableStock: 0
+            }, 'Product is in maintenance'));
+        }
+
+        // Find items reserved during the specified period
+        const reservedCountPipeline: PipelineStage[] = [
+            {
+                $match: {
+                    'items.product': new mongoose.Types.ObjectId(id),
+                    status: { $nin: ['Returned', 'Cancelled'] },
+                    startDate: { $lt: end },
+                    endDate: { $gt: start }
+                }
+            },
+            { $unwind: '$items' },
+            { $match: { 'items.product': new mongoose.Types.ObjectId(id) } },
+            { $group: { _id: null, totalReserved: { $sum: '$items.quantity' } } }
+        ];
+
+        const reservationResult = await Reservation.aggregate(reservedCountPipeline);
+        const reservedCount = reservationResult[0]?.totalReserved || 0;
+        const availableStock = product.stock - reservedCount;
+        const isAvailable = availableStock >= requestedQuantity;
+
+        return res.status(200).json(new ApiResponse(200, {
+            available: isAvailable,
+            reason: isAvailable ? 'Product is available for the selected dates.' : `Insufficient stock. Only ${availableStock} units are available for this period.`,
+            availableStock
+        }, 'Availability check for date range successful'));
+    }
+    
+    // SCENARIO 2: No date range provided. Check CURRENT availability.
+    else {
+        // Find items that are currently in an active reservation status
+        const reservedCountPipeline: PipelineStage[] = [
+            {
+                $match: {
+                    'items.product': new mongoose.Types.ObjectId(id),
+                    'status': { $in: ['Reserved', 'PickedUp'] } // Active statuses
+                }
+            },
+            { $unwind: '$items' },
+            { $match: { 'items.product': new mongoose.Types.ObjectId(id) } },
+            { $group: { _id: null, totalReserved: { $sum: '$items.quantity' } } }
+        ];
+
+        const reservationResult = await Reservation.aggregate(reservedCountPipeline);
+        const reservedCount = reservationResult[0]?.totalReserved || 0;
+        const availableStock = product.stock - reservedCount;
+
+        return res.status(200).json(new ApiResponse(200, {
+            available: availableStock > 0,
+            reason: 'Current product availability.',
+            totalStock: product.stock,
+            currentlyReserved: reservedCount,
+            availableStock: availableStock,
+        }, 'Current product availability fetched successfully'));
+    }
 });
