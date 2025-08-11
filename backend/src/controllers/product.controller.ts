@@ -51,6 +51,7 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     const product = await Product.create({
         ...productData,
         images: imageUrls,
+        createdBy: req.user?._id,
     });
 
     return res
@@ -182,8 +183,14 @@ export const getProductById = asyncHandler(async (req: Request, res: Response) =
 
 export const updateProduct = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new ApiError(400, 'Invalid product ID');
+    const productToUpdate = await Product.findById(id);
+
+    if (!productToUpdate) {
+        throw new ApiError(404, 'Product not found');
+    }
+    //@ts-ignore
+    if (productToUpdate.createdBy.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to update this product.");
     }
 
     const parsedBody = ProductValidationSchema.partial().safeParse(req.body);
@@ -224,8 +231,14 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
 
 export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new ApiError(400, 'Invalid product ID');
+      const productToDelete = await Product.findById(id);
+
+    if (!productToDelete) {
+        throw new ApiError(404, 'Product not found');
+    }
+    //@ts-ignore
+    if (productToDelete.createdBy.toString() !== req.user?._id.toString()) {
+        throw new ApiError(403, "You are not authorized to delete this product.");
     }
 
     // Check for active reservations before deleting

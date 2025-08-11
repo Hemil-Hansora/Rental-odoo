@@ -29,6 +29,7 @@ export const ProductValidationSchema = z.object({
   taxPercent: z.number().min(0).optional(),
   maintenanceBlocks: z.array(MaintenanceBlockSchema).optional(),
   metadata: z.record(z.any()).optional(),
+   createdBy: zodObjectId,
 });
 
 // TYPESCRIPT TYPE
@@ -56,6 +57,12 @@ const productMongooseSchema = new Schema<ProductDocument>({
     reason: { type: String },
   }],
   metadata: { type: Schema.Types.Mixed },
+  //@ts-ignore
+  createdBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
 }, { timestamps: true });
 
 // MODEL

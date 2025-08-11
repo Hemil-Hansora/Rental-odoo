@@ -6,6 +6,7 @@ import { Reservation } from '../models/reservation.model';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
+import { sendNotification } from './notification.controller';
 
 
 export const createOrderFromQuotation = asyncHandler(async (req: Request, res: Response) => {
@@ -74,6 +75,15 @@ export const createOrderFromQuotation = asyncHandler(async (req: Request, res: R
 
         // 6. If all operations succeed, commit the transaction
         await session.commitTransaction();
+
+         await sendNotification(
+            order.customer.toString(),
+            'order_confirmed',
+            {
+                orderId: order._id,
+                message: `Your order #${order._id.toString().slice(-6)} has been confirmed.`
+            }
+        );
 
         return res
             .status(201)
@@ -151,6 +161,17 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         { $set: { status: status } } // Simplified for this example
     );
 
+     await sendNotification(
+        order.customer.toString(),
+        'order_status_update',
+        {
+            orderId: order._id,
+            status: order.status,
+            message: `Your order status has been updated to: ${order.status}`
+        }
+    );
+
+
     return res
         .status(200)
         .json(new ApiResponse(200, order, "Order status updated successfully"));
@@ -209,6 +230,16 @@ export const cancelOrder = asyncHandler(async (req: Request, res: Response) => {
         );
 
         await session.commitTransaction();
+
+        await sendNotification(
+            order.customer.toString(),
+            'order_cancelled',
+            {
+                orderId: order._id,
+                reason: reason,
+                message: `Your order has been cancelled. Reason: ${reason}`
+            }
+        );
 
         return res
             .status(200)
