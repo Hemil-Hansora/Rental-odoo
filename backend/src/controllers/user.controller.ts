@@ -7,6 +7,7 @@ import { User, UserDocument } from "../models/user.model"; // Adjust path as nee
 import { asyncHandler } from "../utils/asyncHandler"; // Adjust path as needed
 import { ApiError } from "../utils/apiError"; // Adjust path as needed
 import { ApiResponse } from "../utils/apiResponse"; // Adjust path as needed
+import { sendEmail } from "../utils/mailer";
 
 // --- Helper Function to Generate Tokens ---
 
@@ -87,6 +88,17 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
 
     if (!createdUser) {
         throw new ApiError(500, "Failed to create user");
+    }
+
+    try {
+        await sendEmail({
+            to: createdUser.email,
+            subject: "Welcome to Our Rental App!",
+            html: `<h1>Hi ${createdUser.name},</h1><p>Thank you for joining us.</p>`
+        });
+    } catch (emailError) {
+        // Don't block the user registration if email fails. Just log the error.
+        console.error(`Failed to send welcome email to ${createdUser.email}`, emailError);
     }
 
     // 6. Send the successful response
