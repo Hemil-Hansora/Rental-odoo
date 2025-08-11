@@ -5,6 +5,8 @@ import LoginPage from './pages/login';
 import LandingPage from './pages/landing';
 import UserDashboard from './pages/dashboard/user';
 import CustomerDashboard from './pages/dashboard/customer';
+import ProfilePage from './pages/profile/index';
+import ChangePasswordPage from './pages/profile/change-password';
 
 function App() {
   return (
@@ -15,6 +17,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
   <Route path="/dashboard/user" element={<UserDashboard />} />
   <Route path="/dashboard/customer" element={<CustomerDashboard />} />
+  <Route path="/profile" element={<ProfilePage />} />
+  <Route path="/profile/change-password" element={<ChangePasswordPage />} />
         {/* Add other routes for your application here */}
       </Routes>
     </Router>
