@@ -6,7 +6,7 @@ import { zodObjectId } from '../lib/zod-types';
 export const NotificationValidationSchema = z.object({
   type: z.enum(['reminder', 'overdue', 'pickup_soon']),
   recipient: zodObjectId,
-  channel: z.enum(['email', 'sms', 'push']),
+  channel: z.enum(['email', 'push']),
   payload: z.record(z.any()),
   scheduledAt: z.date(),
   sentAt: z.date().optional(),
@@ -22,7 +22,7 @@ const notificationMongooseSchema = new Schema<NotificationDocument>({
   type: { type: String, enum: ['reminder', 'overdue', 'pickup_soon'], required: true },
   // @ts-ignore
   recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  channel: { type: String, enum: ['email', 'sms', 'push'], required: true },
+  channel: { type: String, enum: ['email', 'push'], required: true },
   payload: { type: Schema.Types.Mixed, required: true },
   scheduledAt: { type: Date, required: true },
   sentAt: { type: Date },

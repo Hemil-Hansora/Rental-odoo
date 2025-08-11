@@ -7,10 +7,10 @@ export const PaymentValidationSchema = z.object({
   order: zodObjectId,
   invoice: zodObjectId.optional(),
   amount: z.number().positive(),
-  method: z.enum(['stripe', 'paypal', 'cash', 'bank_transfer']),
+  method: z.enum(['razorPay']),
   status: z.enum(['pending', 'completed', 'failed', 'refunded']),
   transactionId: z.string().optional(),
-  currency: z.string().default('USD'),
+  currency: z.string().default('INR'),
   metadata: z.record(z.any()).optional(),
 });
 
@@ -23,10 +23,10 @@ const paymentMongooseSchema = new Schema<PaymentDocument>({
   order: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
   invoice: { type: Schema.Types.ObjectId, ref: 'Invoice' },
   amount: { type: Number, required: true },
-  method: { type: String, enum: ['stripe', 'paypal', 'cash', 'bank_transfer'], required: true },
+  method: { type: String, enum: ['razorPay'], required: true },
   status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], required: true },
   transactionId: { type: String },
-  currency: { type: String, required: true, default: 'USD' },
+  currency: { type: String, required: true, default: 'INR' },
   metadata: { type: Schema.Types.Mixed }, // e.g., stripe paymentIntentId
 }, { timestamps: true });
 
