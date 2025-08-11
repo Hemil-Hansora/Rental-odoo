@@ -27,7 +27,7 @@ const paymentMongooseSchema = new Schema<PaymentDocument>({
   status: { type: String, enum: ['pending', 'completed', 'failed', 'refunded'], required: true },
   transactionId: { type: String },
   currency: { type: String, required: true, default: 'INR' },
-  metadata: { type: Schema.Types.Mixed }, // e.g., stripe paymentIntentId
+  metadata: { type: Schema.Types.Mixed }, 
 }, { timestamps: true });
 
 // MODEL
