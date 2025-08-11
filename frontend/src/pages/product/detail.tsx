@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Heart, Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
+import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
 
 type APIProduct = {
   _id: string
@@ -30,6 +31,7 @@ export default function ProductDetailPage() {
   const [wish, setWish] = React.useState(false)
   const [qty, setQty] = React.useState(1)
   const [coupon, setCoupon] = React.useState('')
+  const [couponApplied, setCouponApplied] = React.useState(false)
   const [dateFrom, setDateFrom] = React.useState<string>('')
   const [dateTo, setDateTo] = React.useState<string>('')
 
@@ -65,6 +67,31 @@ export default function ProductDetailPage() {
     if (product.pricing.pricePerHour) return { amount: product.pricing.pricePerHour, unit: '/hour' }
     return { amount: 0, unit: '' }
   }, [product])
+
+  const rentalDays = React.useMemo(() => daysBetweenInclusive(dateFrom, dateTo), [dateFrom, dateTo])
+
+  const estimateCost = React.useMemo(() => {
+    const p = product?.pricing
+    if (!p) return 0
+    const d = rentalDays
+    if (d === 0) return 0
+    let base = 0
+    if (p.pricePerDay) {
+      base = p.pricePerDay * d
+    } else if (p.pricePerWeek) {
+      const weeks = Math.ceil(d / 7)
+      base = p.pricePerWeek * weeks
+    } else if (p.pricePerHour) {
+      base = p.pricePerHour * 24 * d
+    }
+    return base * qty
+  }, [product, rentalDays, qty])
+
+  const couponDiscount = React.useMemo(() => (!couponApplied ? 0 : calculateCouponDiscount(estimateCost, coupon)), [coupon, couponApplied, estimateCost])
+
+  const totalEstimate = Math.max(0, estimateCost - couponDiscount)
+
+  const formatINR = (n: number) => `₹${n.toFixed(2)}`
 
   const onShare = async () => {
     const url = window.location.href
@@ -120,7 +147,10 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="rounded-xl border bg-white p-4">
-              <div className="text-2xl font-semibold">${showPrice.amount}{showPrice.unit}</div>
+              <div className="text-2xl font-semibold">{formatINR(showPrice.amount)}{showPrice.unit}</div>
+              {rentalDays > 0 && (
+                <div className="mt-1 text-sm text-muted-foreground">Estimated total for {rentalDays} {rentalDays===1?'day':'days'} × {qty}: {formatINR(totalEstimate)}</div>
+              )}
               <div className="mt-3 grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm inline-flex items-center gap-1"><CalendarIcon className="size-4"/> From</label>
@@ -150,13 +180,42 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="mt-3 grid sm:grid-cols-[1fr_auto] gap-2 items-center">
-                <Input placeholder="Coupon code" value={coupon} onChange={e => setCoupon(e.target.value)} />
-                <Button variant="outline">Apply coupon</Button>
+                <Input placeholder="Coupon code" value={coupon} onChange={e => { setCoupon(e.target.value); setCouponApplied(false); }} />
+                <Button variant="outline" onClick={() => setCouponApplied(!!coupon.trim())}>{couponApplied ? 'Applied' : 'Apply coupon'}</Button>
               </div>
+
+              {rentalDays > 0 && (
+                <div className="mt-3 text-sm">
+                  <div className="flex items-center justify-between"><span>Duration</span><span>{rentalDays} {rentalDays === 1 ? 'day' : 'days'}</span></div>
+                  <div className="flex items-center justify-between"><span>Qty</span><span>{qty}</span></div>
+                  <div className="flex items-center justify-between"><span>Estimated cost</span><span>{formatINR(estimateCost)}</span></div>
+                  {couponApplied && couponDiscount > 0 && (
+                    <div className="flex items-center justify-between text-green-700"><span>Coupon discount</span><span>-{formatINR(couponDiscount)}</span></div>
+                  )}
+                  <div className="border-t mt-2 pt-2 flex items-center justify-between font-semibold"><span>Total</span><span>{formatINR(totalEstimate)}</span></div>
+                </div>
+              )}
 
               <div className="mt-4 flex items-center gap-2">
                 <Button variant="outline" onClick={onShare} className="inline-flex items-center gap-2"><Share2 className="size-4"/> Share</Button>
-                <Button variant="outline">Quotation request</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const unit = showPrice.amount || 0
+                    const payload = {
+                      name: product?.name,
+                      unitPrice: unit,
+                      unit: showPrice.unit,
+                      qty,
+                      from: dateFrom,
+                      to: dateTo,
+                      coupon,
+                    }
+                    navigate(`/quotation/${product?._id || 'item'}`,{ state: payload })
+                  }}
+                >
+                  Quotation request
+                </Button>
               </div>
             </div>
 

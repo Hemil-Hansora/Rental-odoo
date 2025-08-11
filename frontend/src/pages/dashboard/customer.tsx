@@ -244,7 +244,7 @@ export default function CustomerDashboard() {
                         <a href={`/product/${p._id}`} className="font-medium truncate hover:underline" title={p.name}>{p.name}</a>
                         <div className="text-sm text-muted-foreground">{catName}</div>
                       </div>
-                      <div className="mt-2 text-lg font-semibold">${price}{unit}</div>
+                      <div className="mt-2 text-lg font-semibold">₹{price}{unit}</div>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <Button size="sm" onClick={() => addToCart(p._id)} className="btn-gradient inline-flex items-center gap-1"><ShoppingCart className="size-4"/> Add</Button>
