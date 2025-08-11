@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import axios from 'axios'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/card'
+import { api } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Heart, Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
@@ -47,7 +47,7 @@ export default function ProductDetailPage() {
       try {
         setLoading(true)
         setError(null)
-        const res = await axios.get(`http://localhost:3000/api/v1/product/get-product/${id}`)
+  const res = await api.get(`/api/v1/product/get-product/${id}`)
         setProduct(res?.data?.data ?? null)
       } catch (e: any) {
         setError(e?.response?.data?.message || 'Failed to load product')
