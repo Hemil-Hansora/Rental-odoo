@@ -53,6 +53,7 @@ const signupBodySchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   password: z.string().min(8, "Password must be at least 8 characters long"),
+  role:z.string()
 });
 
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
@@ -61,7 +62,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     if (!validationResult.success) {
         throw new ApiError(400, "Validation failed", validationResult.error.errors);
     }
-    const { name, email, phone, password } = validationResult.data;
+    const { name, email, phone, password,role } = validationResult.data;
 
     // 2. Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -78,6 +79,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
         email,
         phone,
         passwordHash,
+        role
     });
 
     // 5. Retrieve the created user (without the password)

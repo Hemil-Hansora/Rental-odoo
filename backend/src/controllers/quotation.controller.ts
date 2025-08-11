@@ -20,88 +20,110 @@ const createQuotationBodySchema = z.object({
 
 
 export const createQuotation = asyncHandler(async (req: Request, res: Response) => {
-    // 1. Validate request body
+    // 1. Validate the incoming request body (the "cart")
     const validationResult = createQuotationBodySchema.safeParse(req.body);
     if (!validationResult.success) {
         throw new ApiError(400, "Invalid quotation data", validationResult.error.errors);
     }
     const { items: requestedItems, notes } = validationResult.data;
-    
-    let subtotal = 0;
-    const processedItems = [];
 
-    // 2. Process each item in the quotation
+    // 2. Group all requested items by their vendor (the product's creator)
+    const vendorItemsMap = new Map<string, any[]>();
+
     for (const item of requestedItems) {
-        const product = await Product.findById(item.product);
+        const product = await Product.findById(item.product).select('createdBy pricing name'); // Get vendor ID and pricing
         if (!product) {
             throw new ApiError(404, `Product with ID ${item.product} not found`);
         }
         
-        // --- Price Calculation Logic ---
-        const start = new Date(item.start);
-        const end = new Date(item.end);
-        const durationMs = end.getTime() - start.getTime();
-        const durationHours = durationMs / (1000 * 60 * 60);
-        const durationDays = durationHours / 24;
-
-        let unitPrice = 0;
-        let unit = 'day';
-
-        // Determine the best pricing unit (this can be more complex)
-        if (product.pricing.pricePerWeek && durationDays >= 6.5) {
-            unitPrice = product.pricing.pricePerWeek;
-            unit = 'week';
-        } else if (product.pricing.pricePerDay && durationHours >= 22) {
-            unitPrice = product.pricing.pricePerDay;
-            unit = 'day';
-        } else if (product.pricing.pricePerHour) {
-            unitPrice = product.pricing.pricePerHour;
-            unit = 'hour';
-        } else {
-            // Fallback to day price if no other price fits
-            unitPrice = product.pricing.pricePerDay || 0;
-            unit = 'day';
-        }
-
-        if (unitPrice === 0) {
-            throw new ApiError(400, `Product '${product.name}' has no applicable pricing.`);
-        }
-
-        // For simplicity, we multiply. A real system might use prorated logic.
-        const totalItemPrice = unitPrice * item.quantity;
-        subtotal += totalItemPrice;
+        const vendorId = product.createdBy.toString();
         
-        processedItems.push({
-            ...item,
-            start,
-            end,
-            unit,
-            unitPrice,
-            totalPrice: totalItemPrice,
-        });
+        if (!vendorItemsMap.has(vendorId)) {
+            vendorItemsMap.set(vendorId, []);
+        }
+        
+        // Add the full product details to the item for easier processing later
+        vendorItemsMap.get(vendorId)!.push({ ...item, productDetails: product });
     }
 
-    // 3. Calculate total with tax (assuming a global tax rate for now)
-    const taxRate = 0.18; // Example: 18% tax. You can make this dynamic later.
-    const tax = subtotal * taxRate;
-    const total = subtotal + tax;
+    const createdQuotations = [];
+
+    // 3. Loop through each vendor's items and create a separate quotation for each one
+    for (const [vendorId, items] of vendorItemsMap.entries()) {
+        
+        let subtotal = 0;
+        const processedItems = [];
+
+        // This loop now only processes items for ONE vendor at a time
+        for (const item of items) {
+            const { productDetails, quantity, start, end } = item;
+            
+            // --- Price Calculation Logic ---
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            const durationMs = endDate.getTime() - startDate.getTime();
+            const durationHours = durationMs / (1000 * 60 * 60);
+            const durationDays = durationHours / 24;
+
+            let unitPrice = 0;
+            let unit = 'day';
+
+            // Use the pricing from the productDetails we fetched earlier
+            if (productDetails.pricing.pricePerWeek && durationDays >= 6.5) {
+                unitPrice = productDetails.pricing.pricePerWeek;
+                unit = 'week';
+            } else if (productDetails.pricing.pricePerDay && durationHours >= 22) {
+                unitPrice = productDetails.pricing.pricePerDay;
+                unit = 'day';
+            } else if (productDetails.pricing.pricePerHour) {
+                unitPrice = productDetails.pricing.pricePerHour;
+                unit = 'hour';
+            } else {
+                unitPrice = productDetails.pricing.pricePerDay || 0;
+            }
+
+            if (unitPrice === 0) {
+                throw new ApiError(400, `Product '${productDetails.name}' has no applicable pricing.`);
+            }
+
+            const totalItemPrice = unitPrice * quantity;
+            subtotal += totalItemPrice;
+            
+            processedItems.push({
+                product: item.product,
+                quantity,
+                start: startDate,
+                end: endDate,
+                unit,
+                unitPrice,
+                totalPrice: totalItemPrice,
+            });
+        }
+        
     
-    // 4. Create the quotation document
-    const quotation = await Quotation.create({
-        createdBy: req.user?._id, // from verifyJWT middleware
-        items: processedItems,
-        subtotal,
-        tax,
-        total,
-        notes,
-        status: 'draft',
-    });
+        const taxRate = 0.18; 
+        const tax = subtotal * taxRate;
+        const total = subtotal + tax;
+        
+        
+        const quotation = await Quotation.create({
+            createdBy: req.user?._id, 
+            vendor: vendorId,         
+            items: processedItems,
+            subtotal,
+            tax,
+            total,
+            notes,
+            status: 'draft',
+        });
+        createdQuotations.push(quotation);
+    }
+
 
     return res
         .status(201)
-        .json(new ApiResponse(201, quotation, "Quotation created successfully"));
+        .json(new ApiResponse(201, createdQuotations, "Quotation(s) created successfully"));
 });
-
 
 
 

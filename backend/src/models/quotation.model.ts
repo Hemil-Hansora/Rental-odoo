@@ -6,6 +6,7 @@ import { OrderItemValidationSchema, IOrderItem } from './shared/orderItem.schema
 // ZOD SCHEMA
 export const QuotationValidationSchema = z.object({
   createdBy: zodObjectId,
+    vendor: zodObjectId,
   createdByStaff: zodObjectId.optional(),
   items: z.array(OrderItemValidationSchema),
   subtotal: z.number().min(0),
@@ -26,6 +27,8 @@ export type QuotationDocument = IQuotation & Document;
 const quotationMongooseSchema = new Schema<QuotationDocument>({
 //    @ts-ignore
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  //@ts-ignore
+vendor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   createdByStaff: { type: Schema.Types.ObjectId, ref: 'User' },
   items: [{
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
