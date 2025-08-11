@@ -62,6 +62,8 @@ export const getCategoryById = asyncHandler(async (req: Request, res: Response) 
 
 export const updateCategory = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    console.log(req.body);
+    
     const { name, description, parentCategory } = req.body;
 
     const updateData: { [key: string]: any } = { description, parentCategory };

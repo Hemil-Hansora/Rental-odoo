@@ -10,15 +10,14 @@ import { verifyJWT, authorizeRoles } from "../middlewares/index"
 
 const router = Router();
 
-// --- Public Routes ---
-router.route('/').get(getAllCategories);
-router.route('/:id').get(getCategoryById);
+router.route('/all-categories').get(getAllCategories);
+router.route('/category/:id').get(getCategoryById);
 
 
 router.use(verifyJWT, authorizeRoles("end_user"));
 
-router.route('/').post(createCategory);
-router.route('/:id').patch(updateCategory);
-router.route('/:id').delete(deleteCategory);
+router.route('/create-category').post(createCategory);
+router.route('/update/:id').patch(updateCategory);
+router.route('/delete/:id').delete(deleteCategory);
 
 export default router;
