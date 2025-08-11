@@ -6,6 +6,7 @@ import { Product } from '../models/product.model';
 import { asyncHandler } from '../utils/asyncHandler';
 import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
+import { sendNotification } from './notification.controller';
 
 // --- Zod Schema for the request body ---
 const createQuotationBodySchema = z.object({
@@ -117,6 +118,16 @@ export const createQuotation = asyncHandler(async (req: Request, res: Response) 
             status: 'draft',
         });
         createdQuotations.push(quotation);
+
+         await sendNotification(
+            vendorId, // Send notification to the vendor (end_user)
+            'new_quotation',
+            {
+                quotationId: quotation._id,
+                customerId: req.user?._id,
+                message: `You have received a new rental quotation from customer ${req.user?.name}.`
+            }
+        );
     }
 
 
@@ -128,8 +139,14 @@ export const createQuotation = asyncHandler(async (req: Request, res: Response) 
 
 
 export const getAllQuotationsForUser = asyncHandler(async (req: Request, res: Response) => {
-    const quotations = await Quotation.find({ createdBy: req.user?._id })
-        .populate('items.product', 'name images') // Populate product details
+    const query = req.user?.role === 'end_user' 
+        ? { vendor: req.user?._id }
+        : { createdBy: req.user?._id };
+
+    const quotations = await Quotation.find(query)
+        .populate('items.product', 'name images')
+        .populate('vendor', 'name email')
+        .populate('createdBy', 'name email')
         .sort({ createdAt: -1 });
 
     return res
@@ -140,11 +157,20 @@ export const getAllQuotationsForUser = asyncHandler(async (req: Request, res: Re
 
 export const getQuotationByIdForUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const quotation = await Quotation.findOne({ _id: id, createdBy: req.user?._id })
-        .populate('items.product', 'name description pricing');
+    const quotation = await Quotation.findById(id);
 
     if (!quotation) {
-        throw new ApiError(404, "Quotation not found or you do not have permission to view it");
+        throw new ApiError(404, "Quotation not found");
+    }
+
+    // Security Check: User must be the buyer (createdBy) or the vendor
+    //@ts-ignore
+    const isBuyer = quotation.createdBy.toString() === req.user?._id.toString();
+    //@ts-ignore
+    const isVendor = quotation.vendor.toString() === req.user?._id.toString();
+
+    if (!isBuyer && !isVendor) { // 👈 CORRECTED LOGIC
+        throw new ApiError(403, "You are not authorized to view this quotation.");
     }
 
     return res
@@ -158,26 +184,51 @@ export const updateQuotationStatusForUser = asyncHandler(async (req: Request, re
     const { status } = req.body;
 
     // Validate the new status
-    const validStatuses = ['approved', 'rejected', 'sent']; // Define what statuses a user can set
+    const validStatuses = ['approved', 'rejected', 'sent', 'cancelled_by_customer'];
     if (!status || !validStatuses.includes(status)) {
         throw new ApiError(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
     }
 
-    const quotation = await Quotation.findOneAndUpdate(
-        { _id: id, createdBy: req.user?._id, status: 'draft' }, // Can only update a draft
-        { $set: { status: status } },
-        { new: true }
-    );
-
+    const quotation = await Quotation.findById(id).populate('createdBy vendor', 'name');
     if (!quotation) {
-        throw new ApiError(404, "Quotation not found, is not in 'draft' status, or you do not have permission to update it");
+        throw new ApiError(404, "Quotation not found");
     }
+    //@ts-ignore
+    const isVendor = quotation.vendor._id.toString() === req.user?._id.toString();
+    //@ts-ignore
+    const isBuyer = quotation.createdBy._id.toString() === req.user?._id.toString();
+
+    // --- Permission Checks ---
+    if (['approved', 'rejected'].includes(status) && !isVendor) {
+        throw new ApiError(403, "Only the vendor can approve or reject this quotation.");
+    }
+    if (status === 'cancelled_by_customer' && !isBuyer) {
+        throw new ApiError(403, "Only the customer who created the quotation can cancel it.");
+    }
+
+    // --- Update Status ---
+    quotation.status = status;
+    await quotation.save();
+
+    // --- Send Notification to the Other Party ---
+    const recipientId = isVendor ? quotation.createdBy._id : quotation.vendor._id;
+    const senderName = isVendor ? (quotation.vendor as any).name : (quotation.createdBy as any).name;
+    const notificationType = isVendor ? 'quotation_status_update' : 'quotation_cancelled_by_customer';
+    
+    await sendNotification(
+        recipientId.toString(),
+        notificationType,
+        {
+            quotationId: quotation._id,
+            status: quotation.status,
+            message: `Quotation #${quotation._id.toString().slice(-6)} was updated to '${status}' by ${senderName}.`
+        }
+    );
 
     return res
         .status(200)
         .json(new ApiResponse(200, quotation, "Quotation status updated successfully"));
 });
-
 
 export const deleteQuotationForUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
