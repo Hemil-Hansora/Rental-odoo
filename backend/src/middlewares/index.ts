@@ -1,2 +1,2 @@
 export { errorMiddleware } from './error.middleware';
-export { authMiddleware} from './auth.middleware'
+export { verifyJWT , authorizeRoles} from './auth.middleware'

@@ -1,33 +1,62 @@
-import { ApiError, asyncHandler,AuthRequest } from "../utils/index";
-import { User } from "../models/user.model";
-import jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { User, UserDocument } from "../models/user.model"; // Adjust path
+import { asyncHandler } from "../utils/asyncHandler"; // Adjust path
+import { ApiError } from "../utils/apiError"; // Adjust path
 
-interface IUser {
-    username: string;
-    _id: string;
+// Extend Express's Request interface to include the user property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserDocument;
+    }
+  }
 }
 
-export const authMiddleware = asyncHandler(async (req:AuthRequest, _, next) => {
-    const token =
-        req.cookies?.accessToken ||
-        req.header("authorization")?.replace("Bearer ", "");
+/**
+ * Middleware to verify JWT token from cookies or Authorization header.
+ * Attaches the authenticated user object to the request object.
+ */
+export const verifyJWT = asyncHandler(async (req: Request, res, next) => {
+  const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
 
-    if (!token) {
-        throw new ApiError(401, "Unothorized request");
-    }
+  if (!token) {
+    throw new ApiError(401, "Unauthorized request: No token provided");
+  }
 
-    const JWT_PASSWORD = process.env.ACCESS_TOKEN_SECRET;
+  // 🚨 Ensure your secret is in your .env file
+  const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET || "your-access-token-secret";
+  
+  const decodedToken = jwt.verify(token, accessTokenSecret) as JwtPayload;
 
-    try {
-        const decodedToken = jwt.verify(token, JWT_PASSWORD as string) as IUser;
+  const user = await User.findById(decodedToken?._id).select("-passwordHash");
 
-        const user = await User.findById(decodedToken?._id).select("-password");
-        if (!user) {
-            throw new ApiError(401, "Invalid Access token");
-        }
-        req.user = user;
-        next();
-    } catch (err) {
-        throw new ApiError(401, "Invalid Access token");
-    }
+  if (!user) {
+    throw new ApiError(401, "Invalid Access Token: User not found");
+  }
+
+  req.user = user; 
+  next();
 });
+
+
+/**
+ * Middleware factory to authorize users based on their roles.
+ * @param {...("customer" | "end_user")} roles 
+ */
+export const authorizeRoles = (...roles: Array<"customer" | "end_user">) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.role) {
+      throw new ApiError(401, "Authentication error: User data not found.");
+    }
+    
+    if (!roles.includes(req.user.role as "customer" | "end_user")) {
+      throw new ApiError(
+        403, // 403 Forbidden
+        `Role '${req.user.role}' is not authorized to access this route.`
+      );
+    }
+    
+    next();
+  };
+};
