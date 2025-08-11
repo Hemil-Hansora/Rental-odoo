@@ -10,10 +10,10 @@ const router = Router();
 // All reservation routes are for internal staff (customer role) only
 router.use(verifyJWT, authorizeRoles('customer'));
 
-router.route('/')
+router.route('/getAll')
     .get(getAllReservations);
 
-router.route('/:id')
+router.route('/getreservation/:id')
     .get(getReservationById);
 
 export default router;
