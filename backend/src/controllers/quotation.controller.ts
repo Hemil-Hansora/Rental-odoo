@@ -159,22 +159,22 @@ export const getAllQuotationsForUser = asyncHandler(async (req: Request, res: Re
 export const getQuotationByIdForUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    // Use .populate() to fetch the full documents for 'createdBy' and 'vendor'
     const quotation = await Quotation.findById(id)
+        // ✅ Make sure your .populate() call includes the address fields like this
         .populate({
-            path: 'createdBy', // The field in your Quotation model
-            select: 'name email invoiceAddress deliveryAddress' // The fields you want from the User model
+            path: 'createdBy',
+            select: 'name email invoiceAddress deliveryAddress' // Add your address fields here
         })
         .populate({
-            path: 'vendor', // The field for the vendor
-            select: 'name email' // The fields you want from the Vendor/User model
+            path: 'vendor',
+            select: 'name email'
         });
 
     if (!quotation) {
         throw new ApiError(404, "Quotation not found");
     }
 
-    // Security Check: User must be the buyer (createdBy) or the vendor
+    // Security check... (rest of your code remains the same)
     // @ts-ignore
     const isBuyer = quotation.createdBy._id.toString() === req.user?._id.toString();
     // @ts-ignore
