@@ -8,6 +8,8 @@ import ProfilePage from './pages/profile/index';
 import ChangePasswordPage from './pages/profile/change-password';
 import ProductDetailPage from './pages/product/detail';
 import QuotationSummaryPage from './pages/quotation/summary';
+import RentalOrderForm from './pages/dashboard/RentalOrderForm';
+
 
 function App() {
   return (
@@ -18,6 +20,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
   <Route path="/dashboard/user" element={<UserDashboard />} />
   <Route path="/dashboard/customer" element={<CustomerDashboard />} />
+  <Route path="/dashboard/rental-order/:id" element={<RentalOrderForm />} />
   <Route path="/profile" element={<ProfilePage />} />
   <Route path="/profile/change-password" element={<ChangePasswordPage />} />
   <Route path="/product/:id" element={<ProductDetailPage />} />

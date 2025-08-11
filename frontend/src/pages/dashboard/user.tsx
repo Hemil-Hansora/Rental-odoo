@@ -1,25 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import RentalOrders from './RentalOrders'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
-import { Button } from '../../components/ui/button'
-import { Input } from '../../components/ui/input'
-import { Search, Package, ShoppingBag, User2, ChevronDown, LogOut, IndianRupee, Plus, Trash2, X } from 'lucide-react'
-import { api } from '@/lib/api'
-
-type Row = { name: string; orders: number; revenue: number }
-type Category = { _id: string; name: string }
-type Product = {
-  _id: string
-  name: string
-  sku?: string
-  images?: string[]
-  stock: number
-  unit?: string
-  pricing?: { pricePerHour?: number; pricePerDay?: number; pricePerWeek?: number }
-  category?: { _id: string; name: string } | null
-  createdAt?: string
-}
+import { Package, ShoppingBag, User2, ChevronDown, LogOut } from 'lucide-react'
 
 export default function UserDashboard() {
   const navigate = useNavigate()
@@ -30,137 +12,10 @@ export default function UserDashboard() {
     if (!user) navigate('/login', { replace: true })
   }, [])
 
-  // Hardcoded data for demo
-  const [period, setPeriod] = useState<'7d'|'30d'|'90d'>('7d')
-  const [query, setQuery] = useState('')
+  // Page state
   const [showMenu, setShowMenu] = useState(false)
   const [activeSection, setActiveSection] = useState<'overview'|'products'|'rentals'>('overview')
-
-  // Products state
-  const [products, setProducts] = useState<Product[]>([])
-  const [loadingProducts, setLoadingProducts] = useState(false)
-  const [prodQuery, setProdQuery] = useState('')
-  const [categories, setCategories] = useState<Category[]>([])
-  const [showCreate, setShowCreate] = useState(false)
-  const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({
-    name: '',
-    sku: '',
-    category: '',
-    stock: 0,
-    unit: 'piece',
-    description: '',
-    pricePerHour: '',
-    pricePerDay: '',
-    pricePerWeek: '',
-    image: null as File | null,
-  })
-
-  const stats = useMemo(() => {
-    // simple scaling by period
-    const mult = period === '7d' ? 1 : period === '30d' ? 3.8 : 8.5
-    return {
-      quotations: Math.round(12 * mult),
-      rentals: Math.round(8 * mult),
-      revenue: Math.round(1240 * mult),
-    }
-  }, [period])
-
-  const topCategories: Row[] = useMemo(() => ([
-    { name: 'Cameras', orders: 42, revenue: 5200 },
-    { name: 'Tools', orders: 31, revenue: 3100 },
-    { name: 'Gaming', orders: 24, revenue: 2800 },
-  ]), [])
-  const topProducts: Row[] = useMemo(() => ([
-    { name: '4K Action Cam', orders: 18, revenue: 1980 },
-    { name: 'VR Headset', orders: 15, revenue: 1750 },
-    { name: 'Power Drill 18V', orders: 12, revenue: 980 },
-  ]), [])
-  const topCustomers: Row[] = useMemo(() => ([
-    { name: 'Alicia R.', orders: 9, revenue: 890 },
-    { name: 'Jordan P.', orders: 7, revenue: 730 },
-    { name: 'Sam K.', orders: 6, revenue: 640 },
-  ]), [])
-
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase()
-    const f = (rows: Row[]) => rows.filter(r => r.name.toLowerCase().includes(q))
-    return { cats: f(topCategories), prods: f(topProducts), custs: f(topCustomers) }
-  }, [query, topCategories, topProducts, topCustomers])
-
-  // Fetch products and categories
-  useEffect(() => {
-    if (activeSection !== 'products') return
-  const fetchAll = async () => {
-      try {
-        setLoadingProducts(true)
-        const [prodRes, catRes] = await Promise.all([
-      api.get('/api/v1/product/my-products', { params: { search: prodQuery, limit: 50 } }),
-          api.get('/api/v1/category/all-categories'),
-        ])
-        const list: Product[] = prodRes.data?.data?.products ?? []
-        setProducts(list)
-        setCategories(catRes.data?.data ?? [])
-      } catch (e) {
-        console.error('Failed to fetch products/categories', e)
-      } finally {
-        setLoadingProducts(false)
-      }
-    }
-    fetchAll()
-  }, [activeSection, prodQuery])
-
-  const displayPrice = (p?: Product['pricing']) => {
-    if (!p) return '-'
-    if (p.pricePerDay) return `₹${p.pricePerDay}/day`
-    if (p.pricePerWeek) return `₹${p.pricePerWeek}/wk`
-    if (p.pricePerHour) return `₹${p.pricePerHour}/hr`
-    return '-'
-  }
-
-  const handleCreateProduct = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!createForm.name || !createForm.image || (!createForm.pricePerDay && !createForm.pricePerHour && !createForm.pricePerWeek)) {
-      alert('Name, at least one price, and one image are required.')
-      return
-    }
-    try {
-      setCreating(true)
-      const fd = new FormData()
-      fd.append('name', createForm.name)
-      if (createForm.sku) fd.append('sku', createForm.sku)
-      if (createForm.category) fd.append('category', createForm.category)
-      fd.append('stock', String(createForm.stock))
-      if (createForm.unit) fd.append('unit', createForm.unit)
-      if (createForm.description) fd.append('description', createForm.description)
-      if (createForm.pricePerHour) fd.append('pricing.pricePerHour', createForm.pricePerHour)
-      if (createForm.pricePerDay) fd.append('pricing.pricePerDay', createForm.pricePerDay)
-      if (createForm.pricePerWeek) fd.append('pricing.pricePerWeek', createForm.pricePerWeek)
-      fd.append('images', createForm.image)
-
-  await api.post('/api/v1/product/create-product', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      setShowCreate(false)
-      setCreateForm({ name: '', sku: '', category: '', stock: 0, unit: 'piece', description: '', pricePerHour: '', pricePerDay: '', pricePerWeek: '', image: null })
-      // refresh list
-      setProdQuery(q => q) // trigger effect
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to create product'
-      alert(msg)
-    } finally {
-      setCreating(false)
-    }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return
-    try {
-  await api.delete(`/api/v1/product/delete/${id}`)
-      setProducts(prev => prev.filter(p => p._id !== id))
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to delete product'
-      alert(msg)
-    }
-  }
+  // Note: Overview/Products sections are temporarily hidden; only Rental Orders is shown.
 
   return (
     <div className="min-h-screen bg-background">

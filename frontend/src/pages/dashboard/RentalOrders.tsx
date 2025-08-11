@@ -1,6 +1,7 @@
+// import { Card } from '../../components/ui/card'; // Remove unused import
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 
 // Rental order status colors
@@ -15,7 +16,7 @@ const STATUS_COLORS: Record<string, string> = {
 // Rental order card component
 function RentalOrderCard({ order }: { order: any }) {
   return (
-    <div className="border rounded-lg p-4 flex flex-col gap-2 min-w-[220px]">
+    <div className="border rounded-lg p-4 flex flex-col gap-2 min-w-[220px] cursor-pointer hover:shadow-lg" onClick={order.onClick}>
       <div className="font-semibold">{order.customer}</div>
       <div className="text-lg font-bold">₹ {order.amount}</div>
       <div className="text-xs text-muted-foreground">{order.code}</div>
@@ -36,6 +37,7 @@ export default function RentalOrders() {
   // Pagination
   const [page, setPage] = useState(1);
   const pageSize = 8;
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -43,14 +45,17 @@ export default function RentalOrders() {
       try {
         // Replace with actual API call
         const res = await api.get('/api/v1/quotation/getAllUserQuotations');
+        console.log(res.data.data)
         // Transform backend data to match card layout
         const mapped = (res.data?.data || []).map((q: any, i: number) => ({
+          id: q._id,
           customer: q.createdBy?.name || `Customer${i+1}`,
           amount: q.total,
           code: `R${String(i+1).padStart(4, '0')}`,
           status: q.status === 'draft' ? 'Quotation' : q.status.charAt(0).toUpperCase() + q.status.slice(1),
           pickup: q.pickupDate || '',
           latePickup: q.latePickupDate || '',
+          onClick: () => navigate(`/dashboard/rental-order/${q._id}`),
         }));
         setOrders(mapped);
       } catch (e) {
@@ -120,7 +125,12 @@ export default function RentalOrders() {
           ) : pagedOrders.length === 0 ? (
             <div className="col-span-4 text-center text-muted-foreground">No rental orders found</div>
           ) : (
-            pagedOrders.map((order, i) => <RentalOrderCard key={i} order={order} />)
+            pagedOrders.map((order, i) => (
+              <RentalOrderCard
+                key={i}
+                order={order}
+              />
+            ))
           )}
         </div>
       </div>
