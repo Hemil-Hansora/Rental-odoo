@@ -29,6 +29,7 @@ import notificationRouter from "./routes/notification.routes";
 import priceListRouter from "./routes/priceList.routes";
 import timeDependentPriceRule from "./routes/timeDependentPriceRule.routes";
 import reservationRouter from "./routes/reservation.routes";
+import { setupCronJobs } from "./cron/jobs";
 
 
 app.use("/api/v1/user", userRouter);
@@ -47,6 +48,6 @@ app.use("/api/v1/reservation", reservationRouter);
 
 
 
-
+setupCronJobs();
 app.use(errorMiddleware);
 export default app ;

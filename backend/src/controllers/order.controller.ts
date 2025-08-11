@@ -99,6 +99,7 @@ export const createOrderFromQuotation = asyncHandler(async (req: Request, res: R
             },
             delivery: deliveryDetails,
         });
+        console.log(order)
         await order.save({ session });
 
         // Your logic for creating Reservations and updating the quotation status
