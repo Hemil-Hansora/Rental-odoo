@@ -41,7 +41,14 @@ export const OrderValidationSchema = z.object({
   depositAmount: z.number().min(0).default(0),
   paidAmount: z.number().min(0).default(0),
   balanceDue: z.number().min(0),
-  status: z.enum(['reserved', 'ready_for_pickup', 'picked_up', 'in_use', 'returned', 'completed', 'cancelled', 'overdue']),
+  status: z.enum(['reserved', 
+        'ready_for_pickup', 
+        'out_for_delivery', // For tracking items in transit
+        'in_use',           // Covers both customer pickup and successful delivery
+        'returned', 
+        'completed', 
+        'cancelled', 
+        'overdue']),
   pickup: LocationActionSchema,
   return: ReturnDetailsSchema,
   delivery: DeliverySchema,
@@ -61,6 +68,7 @@ const orderMongooseSchema = new Schema<OrderDocument>({
   quotation: { type: Schema.Types.ObjectId, ref: 'Quotation' },
   items: [{
     product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    productImage: { type: String },
     quantity: { type: Number, required: true },
     start: { type: Date, required: true },
     end: { type: Date, required: true },
@@ -75,7 +83,14 @@ const orderMongooseSchema = new Schema<OrderDocument>({
   depositAmount: { type: Number, default: 0 },
   paidAmount: { type: Number, default: 0 },
   balanceDue: { type: Number, required: true },
-  status: { type: String, enum: ['reserved', 'ready_for_pickup', 'picked_up', 'in_use', 'returned', 'completed', 'cancelled', 'overdue'], required: true, index: true },
+  status: { type: String, enum: ['reserved', 
+        'ready_for_pickup', 
+        'out_for_delivery', // For tracking items in transit
+        'in_use',           // Covers both customer pickup and successful delivery
+        'returned', 
+        'completed', 
+        'cancelled', 
+        'overdue'], required: true, index: true },
   pickup: {
     location: { type: String },
     scheduledAt: { type: Date, required: true },

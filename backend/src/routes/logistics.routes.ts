@@ -11,11 +11,10 @@ const router = Router();
 // All logistics routes are for internal staff (customer role) only
 router.use(verifyJWT, authorizeRoles('customer'));
 
-router.route('/')
-    .post(createDeliveryNote)
+router.route('/create-delivery-note').post(createDeliveryNote)
+router.route('/getAll')
     .get(getAllDeliveryNotes);
 
-router.route('/:id')
-    .patch(updateDeliveryNote);
+router.route('/update/:id').patch(updateDeliveryNote);
 
 export default router;

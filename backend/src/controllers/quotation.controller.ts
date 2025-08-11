@@ -120,14 +120,15 @@ export const createQuotation = asyncHandler(async (req: Request, res: Response) 
         createdQuotations.push(quotation);
 
          await sendNotification(
-            vendorId, // Send notification to the vendor (end_user)
-            'new_quotation',
-            {
-                quotationId: quotation._id,
-                customerId: req.user?._id,
-                message: `You have received a new rental quotation from customer ${req.user?.name}.`
-            }
-        );
+  vendorId,
+  'new_quotation',
+  {
+    quotationId: quotation._id,
+    customerId: req.user?._id,
+    message: `You have received a new rental quotation from customer ${req.user?.name}.`
+  }
+);
+
     }
 
 
@@ -209,18 +210,46 @@ export const updateQuotationStatusForUser = asyncHandler(async (req: Request, re
 
     // --- Send Notification to the Other Party ---
     const recipientId = isVendor ? quotation.createdBy._id : quotation.vendor._id;
-    const senderName = isVendor ? (quotation.vendor as any).name : (quotation.createdBy as any).name;
-    const notificationType = isVendor ? 'quotation_status_update' : 'quotation_cancelled_by_customer';
-    
-    await sendNotification(
-        recipientId.toString(),
-        notificationType,
-        {
-            quotationId: quotation._id,
-            status: quotation.status,
-            message: `Quotation #${quotation._id.toString().slice(-6)} was updated to '${status}' by ${senderName}.`
-        }
-    );
+const senderName = isVendor
+    ? (quotation.vendor as any).name
+    : (quotation.createdBy as any).name;
+
+let notificationType: 
+    | 'quotation_status_update'
+    | 'quotation_cancelled_by_customer'
+    | 'new_quotation' = 'quotation_status_update';
+
+let notificationMessage = '';
+
+switch (status) {
+    case 'approved':
+        notificationType = 'quotation_status_update';
+        notificationMessage = `Your quotation #${quotation._id.toString().slice(-6)} was approved by ${senderName}.`;
+        break;
+    case 'rejected':
+        notificationType = 'quotation_status_update';
+        notificationMessage = `Your quotation #${quotation._id.toString().slice(-6)} was rejected by ${senderName}.`;
+        break;
+    case 'sent':
+        notificationType = 'quotation_status_update';
+        notificationMessage = `Your quotation #${quotation._id.toString().slice(-6)} has been sent by ${senderName}.`;
+        break;
+    case 'cancelled_by_customer':
+        notificationType = 'quotation_cancelled_by_customer';
+        notificationMessage = `Quotation #${quotation._id.toString().slice(-6)} was cancelled by ${senderName}.`;
+        break;
+}
+
+// Send push/email notification
+await sendNotification(
+    recipientId.toString(),
+    notificationType,
+    {
+        quotationId: quotation._id,
+        status: quotation.status,
+        message: notificationMessage,
+    }
+);
 
     return res
         .status(200)
