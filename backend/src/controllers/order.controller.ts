@@ -9,92 +9,134 @@ import { ApiResponse } from '../utils/apiResponse';
 import { sendNotification } from './notification.controller';
 
 
+import { z } from 'zod';
+import { zodObjectId } from '../lib/zod-types'; // Assuming you have a custom Zod type for ObjectId
+// ... other imports
+
+// Define a Zod schema for the new data you expect in the request body
+
+
+// Define a Zod schema at the top of your controller file to validate the new inputs
+const createOrderBodySchema = z.object({
+    quotationId: zodObjectId,
+    deliveryMethod: z.enum(['pickup', 'delivery']),
+    deliveryAddress: z.string().optional(),
+}).refine(data => {
+    // Make deliveryAddress required only if the method is 'delivery'
+    return data.deliveryMethod !== 'delivery' || !!data.deliveryAddress;
+}, {
+    message: "A delivery address is required when the delivery method is 'delivery'",
+    path: ['deliveryAddress'],
+});
+
 export const createOrderFromQuotation = asyncHandler(async (req: Request, res: Response) => {
-    const { quotationId } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(quotationId)) {
-        throw new ApiError(400, "Invalid Quotation ID");
+    // 1. Validate the incoming request body with the new schema
+    const validationResult = createOrderBodySchema.safeParse(req.body);
+    if (!validationResult.success) {
+        throw new ApiError(400, "Invalid data provided", validationResult.error.errors);
     }
+    const { quotationId, deliveryMethod, deliveryAddress } = validationResult.data;
 
-    // 1. Find the quotation and ensure it's valid for conversion
-    const quotation = await Quotation.findById(quotationId);
+    // 2. Find the quotation and populate the product details we need
+    const quotation = await Quotation.findById(quotationId).populate({
+        path: 'items.product',
+        select: 'images createdBy' // Select images to copy and createdBy for the vendor
+    });
 
-    if (!quotation) {
-        throw new ApiError(404, "Quotation not found");
-    }
+    if (!quotation) throw new ApiError(404, "Quotation not found");
+    // Add your other quotation validation checks here (status is 'approved', user is owner, etc.)
+    if (quotation.status !== 'approved') throw new ApiError(400, "Only 'approved' quotations can be converted.");
     //@ts-ignore
-    if (quotation.createdBy.toString() !== req.user?._id.toString()) {
-        throw new ApiError(403, "You do not have permission to convert this quotation");
-    }
-    if (quotation.status !== 'approved') {
-        throw new ApiError(400, "Only 'approved' quotations can be converted to orders.");
-    }
-    if (quotation.order) {
-        throw new ApiError(400, "This quotation has already been converted to an order.");
+    if (quotation.createdBy.toString() !== req.user?._id.toString()) throw new ApiError(403, "You do not have permission to convert this quotation");
+
+
+    // 3. Prepare the order items, copying the product image to each item
+    const orderItems = quotation.items.map((item: any) => {
+        const product = item.product;
+        return {
+            ...item.toObject(),
+            product: product._id, // Ensure we are saving just the ID
+            productImage: product.images && product.images.length > 0 ? product.images[0] : undefined,
+        };
+    });
+
+    // 4. Set up delivery and pickup details
+    const vendorId = (quotation.items[0]?.product as any)?.createdBy;
+    if (!vendorId) {
+        throw new ApiError(400, "Could not determine the vendor for this quotation.");
     }
 
-    // 2. Start a MongoDB session for the transaction
+    const pickupLocation = "Default Store Address, Gandhinagar, Gujarat"; // This could come from the vendor's user profile
+
+    const deliveryDetails = {
+        method: deliveryMethod,
+        address: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
+    };
+
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
-        // 3. Create the Order document
+        // 5. Create the Order document with all the new details
         const order = new Order({
             customer: quotation.createdBy,
+            vendor: vendorId,
             quotation: quotation._id,
-            items: quotation.items,
+            items: orderItems, // Use the new items with images
             total: quotation.total,
             tax: quotation.tax,
             discount: quotation.discount,
-            // Calculate initial payment status
             paidAmount: 0,
             balanceDue: quotation.total,
-            status: 'reserved', // Initial status
-            pickup: { scheduledAt: quotation.items[0].start },
-            return: { scheduledAt: quotation.items[0].end },
-            delivery: { method: 'pickup' },
+            status: 'reserved',
+            pickup: {
+                location: pickupLocation,
+                scheduledAt: quotation.items[0].start,
+            },
+            return: {
+                location: pickupLocation,
+                scheduledAt: quotation.items[0].end,
+            },
+            delivery: deliveryDetails,
         });
         await order.save({ session });
 
-        
-        for (const item of order.items) {
-            await Reservation.create([{
-                order: order._id,
-                product: item.product,
-                quantity: item.quantity,
-                start: item.start,
-                end: item.end,
-                status: 'reserved',
-            }], { session });
-        }
-
-        // 5. Update the quotation to prevent it from being used again
+        // Your logic for creating Reservations and updating the quotation status
+       for (const item of order.items) {
+    await Reservation.create([{
+        order: order._id,          // Get the order ID from the newly created order
+        product: item.product,     // Get the product ID from the current item
+        quantity: item.quantity,   // Get the quantity from the current item
+        start: item.start,         // Get the start date from the current item
+        end: item.end,             // Get the end date from the current item
+        status: 'reserved',      // Set the initial status
+    }], { session });
+}
         quotation.status = 'converted';
-        quotation.order = order._id;
         await quotation.save({ session });
 
-        // 6. If all operations succeed, commit the transaction
         await session.commitTransaction();
 
-         await sendNotification(
-            order.customer.toString(),
-            'order_confirmed',
+        // Your notification logic
+        await sendNotification(
+            vendorId.toString(),
+            'order_created',
             {
                 orderId: order._id,
-                message: `Your order #${order._id.toString().slice(-6)} has been confirmed.`
+                customerId: quotation.createdBy,
+                message: `A new order has been created from quotation #${quotation._id.toString().slice(-6)}.`
             }
         );
-
+        
         return res
             .status(201)
             .json(new ApiResponse(201, order, "Order created successfully from quotation"));
 
     } catch (error) {
-        // 7. If any operation fails, abort the transaction
         await session.abortTransaction();
-        throw new ApiError(500, "Failed to create order. Please try again.", [error]);
+        console.error("TRANSACTION FAILED:", error);
+        throw new ApiError(500, "Failed to create order. Please try again.");
     } finally {
-        // 8. End the session
         session.endSession();
     }
 });
@@ -143,7 +185,14 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     const { status } = req.body;
 
     // Define the flow of statuses
-    const validStatuses = ['reserved', 'ready_for_pickup', 'picked_up', 'in_use', 'returned', 'completed', 'cancelled', 'overdue'];
+    const validStatuses = ['reserved', 
+        'ready_for_pickup', 
+        'out_for_delivery', // For tracking items in transit
+        'in_use',           // Covers both customer pickup and successful delivery
+        'returned', 
+        'completed', 
+        'cancelled', 
+        'overdue'];
     if (!validStatuses.includes(status)) {
         throw new ApiError(400, "Invalid status provided.");
     }

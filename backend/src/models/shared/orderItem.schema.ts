@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { zodObjectId } from '../../lib/zod-types';
 
+// Add `productImage` to your Zod schema
 export const OrderItemValidationSchema = z.object({
   product: zodObjectId,
+  productImage: z.string().url().optional(), // <-- ADD THIS
   quantity: z.number().int().positive(),
   start: z.date(),
   end: z.date(),
