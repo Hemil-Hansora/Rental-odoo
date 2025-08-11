@@ -158,19 +158,29 @@ export const getAllQuotationsForUser = asyncHandler(async (req: Request, res: Re
 
 export const getQuotationByIdForUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const quotation = await Quotation.findById(id);
+
+    // Use .populate() to fetch the full documents for 'createdBy' and 'vendor'
+    const quotation = await Quotation.findById(id)
+        .populate({
+            path: 'createdBy', // The field in your Quotation model
+            select: 'name email invoiceAddress deliveryAddress' // The fields you want from the User model
+        })
+        .populate({
+            path: 'vendor', // The field for the vendor
+            select: 'name email' // The fields you want from the Vendor/User model
+        });
 
     if (!quotation) {
         throw new ApiError(404, "Quotation not found");
     }
 
     // Security Check: User must be the buyer (createdBy) or the vendor
-    //@ts-ignore
-    const isBuyer = quotation.createdBy.toString() === req.user?._id.toString();
-    //@ts-ignore
-    const isVendor = quotation.vendor.toString() === req.user?._id.toString();
+    // @ts-ignore
+    const isBuyer = quotation.createdBy._id.toString() === req.user?._id.toString();
+    // @ts-ignore
+    const isVendor = quotation.vendor._id.toString() === req.user?._id.toString();
 
-    if (!isBuyer && !isVendor) { // 👈 CORRECTED LOGIC
+    if (!isBuyer && !isVendor) {
         throw new ApiError(403, "You are not authorized to view this quotation.");
     }
 
