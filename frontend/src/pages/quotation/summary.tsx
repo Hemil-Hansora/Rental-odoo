@@ -1,9 +1,10 @@
 import React from 'react'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
+import { api } from '@/lib/api'
 
 // Lightweight tax/delivery model for demo
 const TAX_RATE = 0.1 // 10%
@@ -24,6 +25,8 @@ type StateShape = {
 
 export default function QuotationSummaryPage() {
   const { state } = useLocation()
+  const { id: productId } = useParams()
+  const navigate = useNavigate()
   const parsed = (state || {}) as StateShape
 
   const [billingAddress, setBillingAddress] = React.useState('')
@@ -49,6 +52,57 @@ export default function QuotationSummaryPage() {
   const taxable = Math.max(0, subTotal - couponDiscount)
   const taxes = taxable * TAX_RATE
   const total = taxable + taxes + deliveryFee
+
+  // Prefill invoice address from user profile
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await api.get('/api/v1/user/profile')
+        const user = res?.data?.data || {}
+        const a = user?.address || {}
+        const pieces = [user?.name, a.street, a.city, a.postalCode, a.state, a.country].filter(Boolean)
+        if (pieces.length) setBillingAddress(pieces.join(', '))
+      } catch (e) {
+        // ignore; keep manual entry
+      }
+    }
+    loadProfile()
+  }, [])
+
+  const [submitting, setSubmitting] = React.useState(false)
+  const handleRequestQuotation = async () => {
+    if (!productId) {
+      alert('Missing product. Please go back and try again.')
+      return
+    }
+    if (!parsed.from || !parsed.to) {
+      alert('Please select rental dates on the product page.')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const startISO = new Date(`${parsed.from}T00:00:00`).toISOString()
+      const endISO = new Date(`${parsed.to}T23:59:59`).toISOString()
+      await api.post('/api/v1/quotation/create', {
+        items: [
+          {
+            product: productId,
+            quantity: qty,
+            start: startISO,
+            end: endISO,
+          },
+        ],
+        notes: `Delivery: ${deliveryMethod}${deliveryAddress ? ` | Address: ${deliveryAddress}` : ''}`,
+      })
+      alert('Quotation request sent to the vendor.')
+      navigate('/dashboard/customer#shop')
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to create quotation'
+      alert(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,11 +135,11 @@ export default function QuotationSummaryPage() {
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm">From</label>
-                    <Input type="date" defaultValue={parsed.from || ''} />
+                    <Input type="date" defaultValue={parsed.from || ''} disabled/>
                   </div>
                   <div>
                     <label className="text-sm">To</label>
-                    <Input type="date" defaultValue={parsed.to || ''} />
+                    <Input type="date" defaultValue={parsed.to || ''} disabled/>
                   </div>
                 </div>
                 {days > 0 && (
@@ -102,11 +156,11 @@ export default function QuotationSummaryPage() {
               <CardContent className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm">Invoice address</label>
-                  <textarea className="w-full h-28 rounded-md border px-3 py-2 text-sm" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="Name, Street, City, ZIP" />
+                  <textarea className="w-full h-28 rounded-md border px-3 py-2 text-sm" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} placeholder="Name, Street, City, ZIP" disabled/>
                 </div>
                 <div>
                   <label className="text-sm">Delivery address</label>
-                  <textarea className="w-full h-28 rounded-md border px-3 py-2 text-sm" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Name, Street, City, ZIP" />
+                  <textarea className="w-full h-28 rounded-md border px-3 py-2 text-sm" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Name, Street, City, ZIP"  required/>
                 </div>
                 <div className="sm:col-span-2">
                   <label className="text-sm">Delivery method</label>
@@ -139,7 +193,7 @@ export default function QuotationSummaryPage() {
                 <div className="flex items-center justify-between text-sm"><span>Taxes (10%)</span><span>₹{taxes.toFixed(2)}</span></div>
                 <div className="flex items-center justify-between text-sm"><span>Delivery</span><span>{deliveryFee === 0 ? 'Free' : `₹${deliveryFee.toFixed(2)}`}</span></div>
                 <div className="border-t pt-2 flex items-center justify-between font-semibold"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
-                <Button className="w-full">Request quotation</Button>
+                <Button className="w-full" disabled={submitting} onClick={handleRequestQuotation}>{submitting ? 'Sending…' : 'Request quotation'}</Button>
               </CardContent>
             </Card>
           </div>

@@ -29,118 +29,119 @@ const createOrderBodySchema = z.object({
     path: ['deliveryAddress'],
 });
 
-export const createOrderFromQuotation = asyncHandler(async (req: Request, res: Response) => {
-    // 1. Validate the incoming request body with the new schema
-    const validationResult = createOrderBodySchema.safeParse(req.body);
-    if (!validationResult.success) {
-        throw new ApiError(400, "Invalid data provided", validationResult.error.errors);
-    }
-    const { quotationId, deliveryMethod, deliveryAddress } = validationResult.data;
+    export const createOrderFromQuotation = asyncHandler(async (req: Request, res: Response) => {
+        // 1. Validate the incoming request body with the new schema
+        const validationResult = createOrderBodySchema.safeParse(req.body);
+        if (!validationResult.success) {
+            throw new ApiError(400, "Invalid data provided", validationResult.error.errors);
+        }
+        const { quotationId, deliveryMethod, deliveryAddress } = validationResult.data;
 
-    // 2. Find the quotation and populate the product details we need
-    const quotation = await Quotation.findById(quotationId).populate({
-        path: 'items.product',
-        select: 'images createdBy' // Select images to copy and createdBy for the vendor
-    });
-
-    if (!quotation) throw new ApiError(404, "Quotation not found");
-    // Add your other quotation validation checks here (status is 'approved', user is owner, etc.)
-    if (quotation.status !== 'approved') throw new ApiError(400, "Only 'approved' quotations can be converted.");
-    //@ts-ignore
-    if (quotation.createdBy.toString() !== req.user?._id.toString()) throw new ApiError(403, "You do not have permission to convert this quotation");
-
-
-    // 3. Prepare the order items, copying the product image to each item
-    const orderItems = quotation.items.map((item: any) => {
-        const product = item.product;
-        return {
-            ...item.toObject(),
-            product: product._id, // Ensure we are saving just the ID
-            productImage: product.images && product.images.length > 0 ? product.images[0] : undefined,
-        };
-    });
-
-    // 4. Set up delivery and pickup details
-    const vendorId = (quotation.items[0]?.product as any)?.createdBy;
-    if (!vendorId) {
-        throw new ApiError(400, "Could not determine the vendor for this quotation.");
-    }
-
-    const pickupLocation = "Default Store Address, Gandhinagar, Gujarat"; // This could come from the vendor's user profile
-
-    const deliveryDetails = {
-        method: deliveryMethod,
-        address: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
-    };
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-        // 5. Create the Order document with all the new details
-        const order = new Order({
-            customer: quotation.createdBy,
-            vendor: vendorId,
-            quotation: quotation._id,
-            items: orderItems, // Use the new items with images
-            total: quotation.total,
-            tax: quotation.tax,
-            discount: quotation.discount,
-            paidAmount: 0,
-            balanceDue: quotation.total,
-            status: 'reserved',
-            pickup: {
-                location: pickupLocation,
-                scheduledAt: quotation.items[0].start,
-            },
-            return: {
-                location: pickupLocation,
-                scheduledAt: quotation.items[0].end,
-            },
-            delivery: deliveryDetails,
+        // 2. Find the quotation and populate the product details we need
+        const quotation = await Quotation.findById(quotationId).populate({
+            path: 'items.product',
+            select: 'images createdBy' // Select images to copy and createdBy for the vendor
         });
-        console.log(order)
-        await order.save({ session });
 
-        // Your logic for creating Reservations and updating the quotation status
-       for (const item of order.items) {
-    await Reservation.create([{
-        order: order._id,          // Get the order ID from the newly created order
-        product: item.product,     // Get the product ID from the current item
-        quantity: item.quantity,   // Get the quantity from the current item
-        start: item.start,         // Get the start date from the current item
-        end: item.end,             // Get the end date from the current item
-        status: 'reserved',      // Set the initial status
-    }], { session });
-}
-        quotation.status = 'converted';
-        await quotation.save({ session });
+        if (!quotation) throw new ApiError(404, "Quotation not found");
+        // Add your other quotation validation checks here (status is 'approved', user is owner, etc.)
+        if (quotation.status !== 'approved') throw new ApiError(400, "Only 'approved' quotations can be converted.");
+        //@ts-ignore
+        if (quotation.createdBy.toString() !== req.user?._id.toString()) throw new ApiError(403, "You do not have permission to convert this quotation");
 
-        await session.commitTransaction();
 
-        // Your notification logic
-        await sendNotification(
-            vendorId.toString(),
-            'order_created',
-            {
-                orderId: order._id,
-                customerId: quotation.createdBy,
-                message: `A new order has been created from quotation #${quotation._id.toString().slice(-6)}.`
-            }
-        );
-        
-        return res
-            .status(201)
-            .json(new ApiResponse(201, order, "Order created successfully from quotation"));
+        // 3. Prepare the order items, copying the product image to each item
+        const orderItems = quotation.items.map((item: any) => {
+            const product = item.product;
+            return {
+                ...item.toObject(),
+                product: product._id, // Ensure we are saving just the ID
+                productImage: product.images && product.images.length > 0 ? product.images[0] : undefined,
+            };
+        });
 
-    } catch (error) {
-        await session.abortTransaction();
-        console.error("TRANSACTION FAILED:", error);
-        throw new ApiError(500, "Failed to create order. Please try again.");
-    } finally {
-        session.endSession();
+        // 4. Set up delivery and pickup details
+        const vendorId = (quotation.items[0]?.product as any)?.createdBy;
+        if (!vendorId) {
+            throw new ApiError(400, "Could not determine the vendor for this quotation.");
+        }
+
+        const pickupLocation = "Default Store Address, Gandhinagar, Gujarat"; // This could come from the vendor's user profile
+
+        const deliveryDetails = {
+            method: deliveryMethod,
+            address: deliveryMethod === 'delivery' ? deliveryAddress : undefined,
+        };
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            // 5. Create the Order document with all the new details
+            const order = new Order({
+                customer: quotation.createdBy,
+                vendor: vendorId,
+                quotation: quotation._id,
+                items: orderItems, // Use the new items with images
+                total: quotation.total,
+                tax: quotation.tax,
+                discount: quotation.discount,
+                paidAmount: 0,
+                balanceDue: quotation.total,
+                status: 'reserved',
+                pickup: {
+                    location: pickupLocation,
+                    scheduledAt: quotation.items[0].start,
+                },
+                return: {
+                    location: pickupLocation,
+                    scheduledAt: quotation.items[0].end,
+                },
+                delivery: deliveryDetails,
+            });
+            console.log(order)
+            await order.save({ session });
+
+            // Your logic for creating Reservations and updating the quotation status
+        for (const item of order.items) {
+        await Reservation.create([{
+            order: order._id,          // Get the order ID from the newly created order
+            product: item.product,     // Get the product ID from the current item
+            quantity: item.quantity,   // Get the quantity from the current item
+            start: item.start,         // Get the start date from the current item
+            end: item.end,             // Get the end date from the current item
+            status: 'reserved',      // Set the initial status
+        }], { session });
     }
-});
+            quotation.status = 'converted';
+            await quotation.save({ session });
+
+            await session.commitTransaction();
+
+            // Your notification logic
+          await sendNotification(
+    order.customer.toString(),
+    'order_status_update',
+    {
+        orderId: order._id,
+        status: 'Booked',
+        message: `Your order #${order._id.toString().slice(-6)} has been successfully booked.`
+    },
+    'email',
+    new Date()
+);    
+            return res
+                .status(201)
+                .json(new ApiResponse(201, order, "Order created successfully from quotation"));
+
+        } catch (error) {
+            await session.abortTransaction();
+            console.error("TRANSACTION FAILED:", error);
+            throw new ApiError(500, "Failed to create order. Please try again.");
+        } finally {
+            session.endSession();
+        }
+    });
 
 
 
@@ -211,16 +212,17 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         { $set: { status: status } } // Simplified for this example
     );
 
-     await sendNotification(
-        order.customer.toString(),
-        'order_status_update',
-        {
-            orderId: order._id,
-            status: order.status,
-            message: `Your order status has been updated to: ${order.status}`
-        }
-    );
-
+   await sendNotification(
+    order.customer.toString(),
+    'order_status_update',
+    {
+        orderId: order._id,
+        status: order.status,
+        message: `Your order status has been updated to: ${order.status}`
+    },
+    'email',
+    new Date()
+);
 
     return res
         .status(200)
@@ -243,7 +245,7 @@ export const cancelOrder = asyncHandler(async (req: Request, res: Response) => {
     const order = await Order.findById(id);
 
     if (!order) {
-        throw new ApiError(404, "Order not found");
+        throw new ApiError(404, "Order not found"); 
     }
     
     // Check permissions
@@ -281,15 +283,17 @@ export const cancelOrder = asyncHandler(async (req: Request, res: Response) => {
 
         await session.commitTransaction();
 
-        await sendNotification(
-            order.customer.toString(),
-            'order_cancelled',
-            {
-                orderId: order._id,
-                reason: reason,
-                message: `Your order has been cancelled. Reason: ${reason}`
-            }
-        );
+     await sendNotification(
+    order.customer.toString(),
+    'order_cancelled',
+    {
+        orderId: order._id,
+        reason: reason,
+        message: `Your order has been cancelled. Reason: ${reason}`
+    },
+    'email',
+    new Date()
+);
 
         return res
             .status(200)
