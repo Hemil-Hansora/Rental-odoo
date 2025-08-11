@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import { Search, Package, ShoppingBag, User2, ChevronDown, LogOut, DollarSign, Plus, Trash2, X } from 'lucide-react'
+import { Search, Package, ShoppingBag, User2, ChevronDown, LogOut, IndianRupee, Plus, Trash2, X } from 'lucide-react'
 import { api } from '@/lib/api'
 
 type Row = { name: string; orders: number; revenue: number }
@@ -111,9 +111,9 @@ export default function UserDashboard() {
 
   const displayPrice = (p?: Product['pricing']) => {
     if (!p) return '-'
-    if (p.pricePerDay) return `$${p.pricePerDay}/day`
-    if (p.pricePerWeek) return `$${p.pricePerWeek}/wk`
-    if (p.pricePerHour) return `$${p.pricePerHour}/hr`
+    if (p.pricePerDay) return `₹${p.pricePerDay}/day`
+    if (p.pricePerWeek) return `₹${p.pricePerWeek}/wk`
+    if (p.pricePerHour) return `₹${p.pricePerHour}/hr`
     return '-'
   }
 
@@ -235,7 +235,7 @@ export default function UserDashboard() {
                   <CardDescription>Gross in the selected period</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-semibold inline-flex items-center gap-2"><DollarSign className="size-6"/>{stats.revenue}</div>
+                  <div className="text-3xl font-semibold inline-flex items-center gap-2"><IndianRupee className="size-6"/>{stats.revenue}</div>
                 </CardContent>
               </Card>
             </div>
@@ -261,7 +261,7 @@ export default function UserDashboard() {
                         <tr key={i} className="border-b">
                           <td className="px-4 py-2">{r.name}</td>
                           <td className="px-4 py-2 text-right">{r.orders}</td>
-                          <td className="px-4 py-2 text-right">${r.revenue}</td>
+                          <td className="px-4 py-2 text-right">₹{r.revenue}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -288,7 +288,7 @@ export default function UserDashboard() {
                         <tr key={i} className="border-b">
                           <td className="px-4 py-2">{r.name}</td>
                           <td className="px-4 py-2 text-right">{r.orders}</td>
-                          <td className="px-4 py-2 text-right">${r.revenue}</td>
+                          <td className="px-4 py-2 text-right">₹{r.revenue}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -315,7 +315,7 @@ export default function UserDashboard() {
                         <tr key={i} className="border-b">
                           <td className="px-4 py-2">{r.name}</td>
                           <td className="px-4 py-2 text-right">{r.orders}</td>
-                          <td className="px-4 py-2 text-right">${r.revenue}</td>
+                          <td className="px-4 py-2 text-right">₹{r.revenue}</td>
                         </tr>
                       ))}
                     </tbody>

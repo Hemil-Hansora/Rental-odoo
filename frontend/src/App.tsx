@@ -7,6 +7,7 @@ import CustomerDashboard from './pages/dashboard/customer';
 import ProfilePage from './pages/profile/index';
 import ChangePasswordPage from './pages/profile/change-password';
 import ProductDetailPage from './pages/product/detail';
+import QuotationSummaryPage from './pages/quotation/summary';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
   <Route path="/profile" element={<ProfilePage />} />
   <Route path="/profile/change-password" element={<ChangePasswordPage />} />
   <Route path="/product/:id" element={<ProductDetailPage />} />
+  <Route path="/quotation/:id" element={<QuotationSummaryPage />} />
         {/* Add other routes for your application here */}
       </Routes>
     </Router>

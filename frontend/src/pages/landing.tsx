@@ -80,7 +80,7 @@ export default function LandingPage() {
               key={src}
               className={`absolute inset-0 transition-opacity duration-700 ease-out ${idx === heroIndex ? 'opacity-100' : 'opacity-0'}`}
               style={{
-                backgroundImage: (`${src}`),
+                backgroundImage: `url(${src})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
@@ -177,7 +177,7 @@ export default function LandingPage() {
                 <CategoryImage title={card.key} sources={categorySources[card.key]} className="h-36 w-full" />
                 <div className="p-4">
                   <div className="font-medium">{card.title}</div>
-                  <div className="text-sm text-muted-foreground">From ₹{`${''}`.length ? card.price : card.price}/day</div>
+                  <div className="text-sm text-muted-foreground">From ₹{`$${''}`.length ? card.price : card.price}/day</div>
                   <div className="mt-3">
                     <Link to="/login"><Button size="sm" variant="outline">View</Button></Link>
                   </div>
