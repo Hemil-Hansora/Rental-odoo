@@ -93,6 +93,8 @@ export default function ProductDetailPage() {
 
   const formatINR = (n: number) => `₹${n.toFixed(2)}`
 
+  const canProceed = Boolean(dateFrom && dateTo && rentalDays > 0)
+
   const onShare = async () => {
     const url = window.location.href
     try {
@@ -106,13 +108,6 @@ export default function ProductDetailPage() {
         alert('Link copied to clipboard')
       }
     } catch {}
-  }
-
-  const onAddToCart = () => {
-    if (product?._id) {
-      addToCartLS(product._id, qty)
-      alert('Added to cart')
-    }
   }
 
   return (
@@ -150,13 +145,16 @@ export default function ProductDetailPage() {
               <div className="mt-3 grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm inline-flex items-center gap-1"><CalendarIcon className="size-4"/> From</label>
-                  <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                  <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} required/>
                 </div>
                 <div>
                   <label className="text-sm inline-flex items-center gap-1"><CalendarIcon className="size-4"/> To</label>
-                  <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                  <Input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} required/>
                 </div>
               </div>
+              {!canProceed && (
+                <div className="mt-2 text-xs text-destructive">Please select valid From and To dates to continue.</div>
+              )}
 
               <div className="mt-3 flex items-center gap-3">
                 <div className="inline-flex items-center border rounded-md overflow-hidden">
@@ -168,11 +166,6 @@ export default function ProductDetailPage() {
                     <Plus className="size-4" />
                   </button>
                 </div>
-
-                <Button className="btn-gradient" onClick={onAddToCart}>Add to cart</Button>
-                <button onClick={() => setWish(w => !w)} className={`size-9 inline-flex items-center justify-center rounded-md border ${wish ? 'bg-primary text-primary-foreground border-primary' : 'bg-white hover:bg-accent/50'}`} title="Wishlist">
-                  <Heart className={`size-4 ${wish ? 'fill-current' : ''}`} />
-                </button>
               </div>
 
               <div className="mt-3 grid sm:grid-cols-[1fr_auto] gap-2 items-center">
@@ -196,7 +189,12 @@ export default function ProductDetailPage() {
                 <Button variant="outline" onClick={onShare} className="inline-flex items-center gap-2"><Share2 className="size-4"/> Share</Button>
                 <Button
                   variant="outline"
+                  disabled={!canProceed}
                   onClick={() => {
+                    if (!canProceed) {
+                      alert('Please select valid From and To dates');
+                      return;
+                    }
                     const unit = showPrice.amount || 0
                     const payload = {
                       name: product?.name,
