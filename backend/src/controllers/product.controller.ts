@@ -364,3 +364,61 @@ export const checkProductAvailability = asyncHandler(async (req: Request, res: R
         }, 'Current product availability fetched successfully'));
     }
 });
+export const getMyProducts = asyncHandler(async (req: Request, res: Response) => {
+    const {
+        search,
+        category,
+        availability,
+        sortBy = 'createdAt',
+        order = 'desc',
+        page: pageStr = '1',
+        limit: limitStr = '10'
+    } = req.query;
+
+    const page = parseInt(pageStr as string, 10);
+    const limit = parseInt(limitStr as string, 10);
+    const skip = (page - 1) * limit;
+
+    
+    if (!req.user || !req.user._id) {
+        throw new ApiError(401, "Unauthorized: User not found in request.");
+    }
+    const filter: FilterQuery<ProductDocument> = { createdBy: req.user._id };
+
+    if (search && typeof search === 'string') {
+        const searchRegex = { $regex: search, $options: 'i' };
+        // This $or will be combined with the createdBy filter via an implicit AND
+        filter.$or = [{ name: searchRegex }, { description: searchRegex }, { sku: searchRegex }];
+    }
+    if (category && typeof category === 'string') {
+        if (!mongoose.Types.ObjectId.isValid(category)) {
+            throw new ApiError(400, 'Invalid category ID format');
+        }
+        filter.category = new mongoose.Types.ObjectId(category);
+    }
+    if (availability === 'in-stock') {
+        filter.stock = { $gt: 0 };
+    } else if (availability === 'out-of-stock') {
+        filter.stock = { $eq: 0 };
+    }
+
+    const products = await Product.find(filter)
+        .populate('category', 'name')
+        .sort({ [sortBy as string]: order === 'asc' ? 1 : -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(); // Use .lean() for faster read-only queries
+
+    const totalProducts = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    return res.status(200).json(new ApiResponse(200, {
+        products,
+        pagination: {
+            currentPage: page,
+            totalPages,
+            totalProducts,
+            limit
+        }
+    }, 'Your products fetched successfully'));
+});
