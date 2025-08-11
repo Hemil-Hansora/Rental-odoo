@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
-import axios from 'axios'
+import { api } from '@/lib/api'
 import {
   Home,
   Store,
@@ -60,11 +60,11 @@ export default function CustomerDashboard() {
 
   // Fetch products
   useEffect(() => {
-    const fetchProducts = async () => {
+  const fetchProducts = async () => {
       try {
         setLoading(true)
         setError(null)
-        const res = await axios.get('http://localhost:3000/api/v1/product/all-product', { params: { limit: 48 } })
+    const res = await api.get('/api/v1/product/all-product', { params: { limit: 48 } })
         const list: APIProduct[] = res?.data?.data?.products ?? []
         setProducts(list)
         const prices = list.map(p => p.pricing?.pricePerDay ?? 0)
