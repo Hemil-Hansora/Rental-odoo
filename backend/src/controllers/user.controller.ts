@@ -83,7 +83,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
         role
     });
 
-    // 5. Retrieve the created user (without the password)
+    
     const createdUser = await User.findById(user._id).select("-passwordHash");
 
     if (!createdUser) {
@@ -97,11 +97,10 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
             html: `<h1>Hi ${createdUser.name},</h1><p>Thank you for joining us.</p>`
         });
     } catch (emailError) {
-        // Don't block the user registration if email fails. Just log the error.
         console.error(`Failed to send welcome email to ${createdUser.email}`, emailError);
     }
 
-    // 6. Send the successful response
+
     return res
         .status(201) // 201 Created
         .json(new ApiResponse(201, createdUser, "User registered successfully"));
