@@ -22,7 +22,7 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
         }
     };
 
-    const validationResult = ProductValidationSchema.omit({ images: true }).safeParse(parsedBody);
+    const validationResult = ProductValidationSchema.omit({ images: true, createdBy: true }).safeParse(parsedBody);
     if (!validationResult.success) {
         throw new ApiError(400, "Invalid product data", validationResult.error.errors);
     }
@@ -46,7 +46,7 @@ export const createProduct = asyncHandler(async (req: Request, res: Response) =>
     if (imageUrls.length === 0) {
         throw new ApiError(500, "Failed to upload images");
     }
-    // --- End of Image Upload Logic ---
+
 
     const product = await Product.create({
         ...productData,
