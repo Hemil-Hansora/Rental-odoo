@@ -232,16 +232,30 @@ export const updateQuotationStatusForUser = asyncHandler(async (req: Request, re
 
 export const deleteQuotationForUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(400, "Invalid Quotation ID");
+    }
+    if (!req.user) {
+        throw new ApiError(401, "User not authenticated. Please log in.");
+    }
 
-    // A user should only be able to delete a quotation if it's still a draft
-    const quotation = await Quotation.findOneAndDelete({ 
-        _id: id, 
-        createdBy: req.user?._id,
+    const queryConditions: any = {
+        _id: id,
         status: 'draft' 
-    });
+    };
+
+    if (req.user.role === 'end_user') {
+        queryConditions.vendor = req.user._id;
+    } else if (req.user.role === 'customer') {
+        queryConditions.createdBy = req.user._id;
+    } else {
+        throw new ApiError(403, "Your user role is not authorized to delete quotations.");
+    }
+
+    const quotation = await Quotation.findOneAndDelete(queryConditions);
 
     if (!quotation) {
-        throw new ApiError(404, "Quotation not found, is not in 'draft' status, or you do not have permission to delete it");
+        throw new ApiError(404, "Quotation not found, is not in 'draft' status, or you do not have permission to delete it.");
     }
 
     return res

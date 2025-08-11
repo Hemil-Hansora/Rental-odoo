@@ -13,19 +13,13 @@ const router = Router();
 router.use(verifyJWT);
 router.route('/create')
     .post(authorizeRoles('customer'), createQuotation);
-
-
+router.route('/deleteQuotation/:id').delete(deleteQuotationForUser);
 router.use(authorizeRoles("end_user"))
 
-router.route('/getAllUserQuotations')
-    .get(getAllQuotationsForUser);
+router.route('/getAllUserQuotations').get(getAllQuotationsForUser);
 
-router.route('/getQuotation/:id')
-    .get(getQuotationByIdForUser)
-    .delete(deleteQuotationForUser);
-
-router.route('/status/:id')
-    .patch(updateQuotationStatusForUser);
+router.route('/getQuotation/:id').get(getQuotationByIdForUser)
+router.route('/status/:id').patch(updateQuotationStatusForUser);
 
 
 export default router;
