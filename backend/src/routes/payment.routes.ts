@@ -4,7 +4,7 @@ import { verifyJWT, authorizeRoles } from "../middlewares/index";
 
 const router = Router();
 
-// All payment routes are protected and for customers (staff) only
+
 router.use(verifyJWT);
 
 router.route('/')

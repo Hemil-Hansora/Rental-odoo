@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
+import axios from 'axios'
 import {
   Home,
   Store,
@@ -15,35 +16,23 @@ import {
   List as ListIcon,
   Search,
   SlidersHorizontal,
-  Star,
   LogOut,
 } from 'lucide-react'
 
-type Product = {
-  id: number
+type APIProduct = {
+  _id: string
   name: string
-  price: number
-  category: string
-  brand: string
-  rating: number
-  tags?: string[]
+  description?: string
+  images?: string[]
+  stock: number
+  unit?: string
+  pricing?: {
+    pricePerHour?: number
+    pricePerDay?: number
+    pricePerWeek?: number
+  }
+  category?: { _id?: string; name?: string }
 }
-
-const ALL_CATEGORIES = ['Cameras', 'Tools', 'Furniture', 'Gaming', 'Outdoors'] as const
-const ALL_BRANDS = ['Acme', 'Globex', 'Umbrella', 'Soylent', 'Initech'] as const
-
-const HARD_PRODUCTS: Product[] = [
-  { id: 1, name: '4K Action Cam', price: 22, category: 'Cameras', brand: 'Acme', rating: 5, tags: ['waterproof'] },
-  { id: 2, name: 'DSLR Pro Kit', price: 35, category: 'Cameras', brand: 'Globex', rating: 4 },
-  { id: 3, name: 'Power Drill 18V', price: 9, category: 'Tools', brand: 'Umbrella', rating: 4 },
-  { id: 4, name: 'Circular Saw', price: 12, category: 'Tools', brand: 'Soylent', rating: 3 },
-  { id: 5, name: 'Ergo Office Chair', price: 14, category: 'Furniture', brand: 'Initech', rating: 5 },
-  { id: 6, name: 'Standing Desk', price: 18, category: 'Furniture', brand: 'Acme', rating: 4 },
-  { id: 7, name: 'VR Headset', price: 20, category: 'Gaming', brand: 'Globex', rating: 5 },
-  { id: 8, name: 'Portable Console', price: 11, category: 'Gaming', brand: 'Umbrella', rating: 4 },
-  { id: 9, name: 'Camping Tent (4p)', price: 16, category: 'Outdoors', brand: 'Soylent', rating: 4 },
-  { id: 10, name: 'Hiking Backpack 45L', price: 10, category: 'Outdoors', brand: 'Initech', rating: 3 },
-]
 
 export default function CustomerDashboard() {
   const navigate = useNavigate()
@@ -54,36 +43,69 @@ export default function CustomerDashboard() {
     if (!user) navigate('/login', { replace: true })
   }, [])
 
+  // Data state
+  const [products, setProducts] = useState<APIProduct[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
   // UI state
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [search, setSearch] = useState('')
   const [minPrice, setMinPrice] = useState(0)
-  const [maxPrice, setMaxPrice] = useState(40)
+  const [maxPrice, setMaxPrice] = useState(100)
   const [selectedCats, setSelectedCats] = useState<string[]>([])
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([])
-  const [minRating, setMinRating] = useState<number>(0)
   const [view, setView] = useState<'grid' | 'list'>('grid')
-  const [wishlist, setWishlist] = useState<number[]>([])
-  const [cart, setCart] = useState<number[]>([])
+  const [wishlist, setWishlist] = useState<string[]>([])
+  const [cart, setCart] = useState<string[]>([])
 
-  const categories = ALL_CATEGORIES as unknown as string[]
-  const brands = ALL_BRANDS as unknown as string[]
+  // Fetch products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await axios.get('http://localhost:3000/api/v1/product/all-product', { params: { limit: 48 } })
+        const list: APIProduct[] = res?.data?.data?.products ?? []
+        setProducts(list)
+        const prices = list.map(p => p.pricing?.pricePerDay ?? 0)
+        const max = Math.max(0, ...prices)
+        setMaxPrice(max > 0 ? Math.ceil(max) : 100)
+      } catch (e: any) {
+        setError(e?.response?.data?.message || 'Failed to load products')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [])
+
+  // Derived categories and price bound
+  const categories = useMemo(() => {
+    const set = new Set<string>()
+    products.forEach(p => { if (p.category?.name) set.add(p.category.name) })
+    return Array.from(set)
+  }, [products])
+  const priceBound = useMemo(() => {
+    const prices = products.map(p => p.pricing?.pricePerDay ?? 0)
+    const max = Math.max(0, ...prices)
+    return max > 0 ? Math.ceil(max) : 100
+  }, [products])
 
   const filtered = useMemo(() => {
-    return HARD_PRODUCTS.filter(p => {
+    return products.filter(p => {
+      const price = p.pricing?.pricePerDay ?? 0
+      const catName = p.category?.name ?? ''
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
-      if (p.price < minPrice || p.price > maxPrice) return false
-      if (selectedCats.length && !selectedCats.includes(p.category)) return false
-      if (selectedBrands.length && !selectedBrands.includes(p.brand)) return false
-      if (minRating && p.rating < minRating) return false
+      if (price < minPrice || price > maxPrice) return false
+      if (selectedCats.length && !selectedCats.includes(catName)) return false
       return true
     })
-  }, [search, minPrice, maxPrice, selectedCats, selectedBrands, minRating])
+  }, [products, search, minPrice, maxPrice, selectedCats])
 
-  const toggleWishlist = (id: number) => {
+  const toggleWishlist = (id: string) => {
     setWishlist(w => w.includes(id) ? w.filter(x => x !== id) : [...w, id])
   }
-  const addToCart = (id: number) => {
+  const addToCart = (id: string) => {
     setCart(c => c.includes(id) ? c : [...c, id])
   }
 
@@ -160,11 +182,14 @@ export default function CustomerDashboard() {
             <CardContent className="space-y-5">
               <div>
                 <label className="text-sm">Search</label>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="size-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"/>
-                    <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find products..." className="pl-8" />
-                  </div>
+                <div className="mt-2 relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Search products..."
+                    className="pl-8"
+                  />
                 </div>
               </div>
 
@@ -175,39 +200,13 @@ export default function CustomerDashboard() {
                   <Input type="number" min={0} value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value) || 0)} placeholder="Max" />
                 </div>
                 <div className="mt-3 flex items-center gap-2">
-                  <input type="range" min={0} max={40} value={minPrice} onChange={e => setMinPrice(Number(e.target.value))} className="flex-1"/>
-                  <input type="range" min={0} max={40} value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} className="flex-1"/>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm">Brands</label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {brands.map(b => (
-                    <button
-                      key={b}
-                      onClick={() => setSelectedBrands(s => s.includes(b) ? s.filter(x => x !== b) : [...s, b])}
-                      className={`px-2.5 py-1.5 rounded-md border text-xs ${selectedBrands.includes(b) ? 'bg-secondary text-secondary-foreground border-secondary' : 'bg-white hover:bg-accent/40'}`}
-                    >{b}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm">Minimum rating</label>
-                <div className="mt-2 flex items-center gap-1">
-                  {[0,1,2,3,4,5].map(r => (
-                    <button key={r} onClick={() => setMinRating(r)} title={`${r}+`}
-                      className={`p-1 rounded-md ${minRating === r ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/40'}`}
-                    >
-                      <Star className={`size-4 ${r <= minRating ? 'fill-current' : ''}`}/>
-                    </button>
-                  ))}
+                  <input type="range" min={0} max={priceBound || 100} value={minPrice} onChange={e => setMinPrice(Number(e.target.value))} className="flex-1"/>
+                  <input type="range" min={0} max={priceBound || 100} value={maxPrice} onChange={e => setMaxPrice(Number(e.target.value))} className="flex-1"/>
                 </div>
               </div>
 
               <div className="pt-2">
-                <Button variant="outline" onClick={() => { setSearch(''); setSelectedBrands([]); setSelectedCats([]); setMinPrice(0); setMaxPrice(40); setMinRating(0); }}>Reset filters</Button>
+                <Button variant="outline" onClick={() => { setSearch(''); setSelectedCats([]); setMinPrice(0); setMaxPrice(priceBound); }}>Reset filters</Button>
               </div>
             </CardContent>
           </Card>
@@ -216,7 +215,7 @@ export default function CustomerDashboard() {
         {/* Results */}
         <section>
           <div className="flex items-center justify-between gap-3">
-            <div className="text-sm text-muted-foreground">{filtered.length} results</div>
+            <div className="text-sm text-muted-foreground">{loading ? 'Loading…' : `${filtered.length} results`}</div>
             <div className="inline-flex items-center gap-1 rounded-md border bg-white p-1">
               <Button variant={view === 'grid' ? 'default' : 'ghost'} size="sm" onClick={() => setView('grid')} className={view === 'grid' ? 'btn-gradient' : ''}>
                 <GridIcon className="size-4"/>
@@ -228,31 +227,35 @@ export default function CustomerDashboard() {
           </div>
 
           <div className={view === 'grid' ? 'mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-6' : 'mt-6 space-y-4'}>
-            {filtered.map(p => (
-              <Card key={p.id} className="overflow-hidden">
-                <div className="h-40 bg-muted" />
-                <CardContent className={view === 'grid' ? 'p-4' : 'p-4 flex items-center gap-4'}>
-                  <div className={view === 'grid' ? '' : 'flex-1'}>
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-sm text-muted-foreground">{p.category} • {p.brand}</div>
+            {error && (<div className="text-sm text-destructive">{error}</div>)}
+            {!loading && !error && filtered.map(p => {
+              const price = p.pricing?.pricePerDay ?? p.pricing?.pricePerWeek ?? p.pricing?.pricePerHour ?? 0
+              const unit = p.pricing?.pricePerDay ? '/day' : p.pricing?.pricePerWeek ? '/week' : p.pricing?.pricePerHour ? '/hour' : ''
+              const catName = p.category?.name ?? '—'
+              const img = p.images?.[0]
+              return (
+                <Card key={p._id} className="overflow-hidden">
+                  <a href={`/product/${p._id}`} aria-label={p.name}>
+                    {img ? <img src={img} alt={p.name} className="h-40 w-full object-cover"/> : <div className="h-40 bg-muted" />}
+                  </a>
+                  <CardContent className={view === 'grid' ? 'p-4' : 'p-4 flex items-center gap-4'}>
+                    <div className={view === 'grid' ? '' : 'flex-1'}>
+                      <div className="flex items-center justify-between">
+                        <a href={`/product/${p._id}`} className="font-medium truncate hover:underline" title={p.name}>{p.name}</a>
+                        <div className="text-sm text-muted-foreground">{catName}</div>
+                      </div>
+                      <div className="mt-2 text-lg font-semibold">${price}{unit}</div>
                     </div>
-                    <div className="mt-1 text-sm text-muted-foreground inline-flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`size-4 ${i < p.rating ? 'fill-current text-yellow-500' : 'text-muted-foreground'}`} />
-                      ))}
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button size="sm" onClick={() => addToCart(p._id)} className="btn-gradient inline-flex items-center gap-1"><ShoppingCart className="size-4"/> Add</Button>
+                      <button onClick={() => toggleWishlist(p._id)} className={`size-9 inline-flex items-center justify-center rounded-md border ${wishlist.includes(p._id) ? 'bg-primary text-primary-foreground border-primary' : 'bg-white hover:bg-accent/50'}`} title="Wishlist">
+                        <Heart className={`size-4 ${wishlist.includes(p._id) ? 'fill-current' : ''}`}/>
+                      </button>
                     </div>
-                    <div className="mt-2 text-lg font-semibold">${p.price}/day</div>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button size="sm" onClick={() => addToCart(p.id)} className="btn-gradient inline-flex items-center gap-1"><ShoppingCart className="size-4"/> Add</Button>
-                    <button onClick={() => toggleWishlist(p.id)} className={`size-9 inline-flex items-center justify-center rounded-md border ${wishlist.includes(p.id) ? 'bg-primary text-primary-foreground border-primary' : 'bg-white hover:bg-accent/50'}`} title="Wishlist">
-                      <Heart className={`size-4 ${wishlist.includes(p.id) ? 'fill-current' : ''}`}/>
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </section>
       </main>
