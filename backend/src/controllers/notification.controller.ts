@@ -12,12 +12,14 @@ export const sendNotification = async (
     payload: Record<string, any>
 ) => {
     try {
-        // 1. Save the notification to the database
+        // Default channel and scheduledAt if missing
         const notification = await Notification.create({
             recipient: recipientId,
             type,
             payload,
-            status: 'scheduled' // or 'sent' immediately
+            channel: 'in-app',
+            scheduledAt: new Date(),
+            status: 'scheduled'
         });
 
         // 2. Emit a real-time event to the specific user's room
