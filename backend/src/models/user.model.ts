@@ -27,7 +27,7 @@ export const UserValidationSchema = z.object({
   name: z.string({ required_error: 'Name is required' }),
   email: z.string({ required_error: 'Email is required' }).email('Invalid email format'),
   passwordHash: z.string({ required_error: 'Password is required' }),
-  role: z.enum(['customer', 'staff', 'admin']).default('customer'),
+ role: z.enum(['customer', 'end_user']).default('customer'), 
   phone: z.string().optional(),
   address: UserAddressSchema.optional(),
   billingInfo: UserBillingInfoSchema.optional(),
@@ -44,7 +44,7 @@ const userMongooseSchema = new Schema<UserDocument>({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
-  role: { type: String, enum: ['customer', 'staff', 'admin'], default: 'customer' },
+role: { type: String, enum: ['customer', 'end_user'], default: 'customer' },
   phone: { type: String },
   address: {
     street: { type: String },
