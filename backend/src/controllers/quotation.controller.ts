@@ -163,7 +163,7 @@ export const getQuotationByIdForUser = asyncHandler(async (req: Request, res: Re
         // ✅ Make sure your .populate() call includes the address fields like this
         .populate({
             path: 'createdBy',
-            select: 'name email invoiceAddress deliveryAddress' // Add your address fields here
+            select: 'name email address ' // Add your address fields here
         })
         .populate({
             path: 'vendor',
