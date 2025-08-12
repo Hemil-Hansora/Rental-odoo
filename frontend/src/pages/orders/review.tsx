@@ -10,6 +10,11 @@ function inr(n: number | undefined | null) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 }
 
+const fmtDate = (d?: string | number | Date) => {
+  if (!d) return '-'
+  try { return new Date(d).toLocaleString() } catch { return '-' }
+}
+
 export default function ReviewOrderPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -21,6 +26,7 @@ export default function ReviewOrderPage() {
   
   const [invoice, setInvoice] = useState<any | null>(null);
   const [paying, setPaying] = useState(false);
+  const [productNames, setProductNames] = useState<Record<string, string>>({})
 
   const loadQuotations = async () => {
     try {
@@ -42,7 +48,7 @@ export default function ReviewOrderPage() {
 
   useEffect(() => { loadQuotations() }, []);
 
-  // When a quotation is selected, try to find its invoice
+  // When a quotation is selected, try to find its invoice (best-effort; may be null until you pay)
   useEffect(() => {
     if (!selectedQuotation) return;
     const findInvoice = async () => {
@@ -57,13 +63,40 @@ export default function ReviewOrderPage() {
     findInvoice();
   }, [selectedQuotation]);
 
+  // Enrich selected quotation items with product names if only IDs are present
+  useEffect(() => {
+    const enrichNames = async () => {
+      if (!selectedQuotation?.items) return
+      const missingIds = Array.from(new Set(
+        (selectedQuotation.items as any[])
+          .map(it => (typeof it.product === 'string' ? it.product : it.product?._id))
+          .filter((id: any) => typeof id === 'string' && !productNames[id])
+      )) as string[]
+      if (missingIds.length === 0) return
+  try {
+        const results = await Promise.allSettled(
+          missingIds.map(id => api.get(`/api/v1/product/get-product/${id}`))
+        )
+        const updates: Record<string, string> = {}
+        results.forEach((res, idx) => {
+          if (res.status === 'fulfilled') {
+            const data = (res.value.data?.data) as any
+            if (data?._id) updates[missingIds[idx]] = data.name || 'Product'
+          }
+        })
+        if (Object.keys(updates).length) setProductNames(prev => ({ ...prev, ...updates }))
+  } finally {}
+    }
+    enrichNames()
+  }, [selectedQuotation, productNames])
+
 
   const handleConvertToOrderAndPay = async () => {
       if (!selectedQuotation) return;
       try {
           setPaying(true);
           // 1. Convert Quotation to Order
-          const orderRes = await api.post('/api/v1/order/from-quotation', {
+          const orderRes = await api.post('/api/v1/order/create-quotation', {
               quotationId: selectedQuotation._id,
               deliveryMethod: 'pickup', // Or get this from the user
           });
@@ -73,20 +106,66 @@ export default function ReviewOrderPage() {
           const invoiceRes = await api.post('/api/v1/invoice/from-order', { orderId: order._id });
           const inv = invoiceRes.data.data;
 
-          // 3. Process Payment
-          const due = inv?.dueAmount ?? inv?.amount;
-          if (!due || due <= 0) return alert('Invoice is already paid');
-          
-          const txId = `rzp_test_${Date.now()}`;
-          await api.post('/api/v1/payment', {
+          // 3. Payment via Razorpay using quotation total as amount
+          const amountINR = Number(selectedQuotation.total) || 0;
+          if (amountINR <= 0) {
+            alert('Invalid amount to pay');
+            return;
+          }
+          const Razorpay = (window as any).Razorpay;
+          const key = (import.meta as any)?.env?.VITE_RAZORPAY_KEY_ID || (window as any).__RAZORPAY_KEY_ID__ || 'rzp_test_R5dGGMQfCUs4Rf';
+          if (!Razorpay) {
+            // Fallback: record payment directly if SDK isn't available
+            const txId = `rzp_test_${Date.now()}`;
+            await api.post('/api/v1/payment', {
               invoiceId: inv._id,
-              amount: due,
+              amount: amountINR,
               method: 'razorPay',
               transactionId: txId,
-          });
+              currency: 'INR',
+            });
+            alert('Payment recorded.');
+            navigate('/customer-dashboard');
+            return;
+          }
 
-          alert('Payment successful! Your order is confirmed.');
-          navigate('/customer-dashboard'); // Navigate to a success or dashboard page
+          const userJson = typeof window !== 'undefined' ? localStorage.getItem('currentUser') : null
+          const user = userJson ? JSON.parse(userJson) as { name?: string; email?: string; phone?: string } : {}
+
+          const rzp = new Razorpay({
+            key,
+            amount: Math.round(amountINR * 100), // paise
+            currency: 'INR',
+            name: 'RentalHub',
+            description: `Payment for quotation #${String(selectedQuotation._id).slice(-6)}`,
+            prefill: {
+              name: user?.name || '',
+              email: (user as any)?.email || '',
+              contact: (user as any)?.phone || '',
+            },
+            handler: async (resp: any) => {
+              try {
+                const transactionId = resp?.razorpay_payment_id || `rzp_test_${Date.now()}`;
+                await api.post('/api/v1/payment', {
+                  invoiceId: inv._id,
+                  amount: amountINR,
+                  method: 'razorPay',
+                  transactionId,
+                  currency: 'INR',
+                });
+                alert('Payment successful! Your order is confirmed.');
+                navigate('/customer-dashboard');
+              } catch (e: any) {
+                alert(e?.response?.data?.message || 'Payment succeeded but recording failed');
+              } finally {
+                setPaying(false);
+              }
+            },
+            modal: { ondismiss: () => setPaying(false) },
+            theme: { color: '#7c3aed' },
+          });
+          rzp.on('payment.failed', () => setPaying(false));
+          rzp.open();
 
       } catch (e: any) {
           alert(e?.response?.data?.message || 'Failed to process payment');
@@ -98,30 +177,36 @@ export default function ReviewOrderPage() {
   return (
     <div className="min-h-screen bg-background">
       <CustomerNavbar />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-semibold mb-4">Review Your Approved Quotations</h1>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-semibold">Review Your Approved Quotations</h1>
+          <p className="text-sm text-muted-foreground mt-1">Select a quotation to see details and complete payment.</p>
+        </div>
 
         {loading && <div className="text-sm text-muted-foreground">Loading…</div>}
         {error && <div className="text-sm text-destructive">{error}</div>}
 
         {/* --- NEW: UI to display the list of selectable quotations --- */}
         {!loading && !selectedQuotation && (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {approvedQuotations.length > 0 ? (
               approvedQuotations.map((q) => (
-                <Card key={q._id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Vendor: {q.vendor?.name || 'N/A'}</p>
-                    <p className="text-sm text-muted-foreground">Created: {new Date(q.createdAt).toLocaleDateString()}</p>
+                <Card key={q._id} className="p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">{q.vendor?.name || 'Vendor'}</div>
+                      <div className="text-xs text-muted-foreground">Created: {new Date(q.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-200">Approved</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">{inr(q.total)}</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-lg font-semibold">{inr(q.total)}</div>
                     <Button size="sm" onClick={() => setSelectedQuotation(q)}>Review & Pay</Button>
                   </div>
                 </Card>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">You have no approved quotations to review.</p>
+              <Card className="p-6 col-span-full text-center text-sm text-muted-foreground">You have no approved quotations to review. <Button variant="link" onClick={() => navigate('/dashboard/customer#shop')}>Go shop</Button></Card>
             )}
           </div>
         )}
@@ -131,23 +216,58 @@ export default function ReviewOrderPage() {
           <div className="space-y-6">
             <Button variant="outline" size="sm" onClick={() => setSelectedQuotation(null)}>← Back to List</Button>
             <Card className="p-4">
-                {/* Details of the selected quotation */}
-                <div className="font-medium">Vendor: {selectedQuotation.vendor?.name}</div>
-                <div className="text-base font-semibold">Total: {inr(selectedQuotation.total)}</div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <div className="font-medium">Vendor: {selectedQuotation.vendor?.name}</div>
+                  <div className="text-xs text-muted-foreground">Quotation #{String(selectedQuotation._id).slice(-6)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">
+                    Pickup: {fmtDate(selectedQuotation.items?.[0]?.start)} • Return: {fmtDate(selectedQuotation.items?.[0]?.end)}
+                  </div>
+                  <div className="text-base font-semibold">Total: {inr(selectedQuotation.total)}</div>
+                </div>
+              </div>
             </Card>
 
             <div className="border rounded-md overflow-x-auto">
-              <table className="w-full text-sm">
-                {/* Table with items from selectedQuotation.items */}
+              <table className="w-full text-sm min-w-[640px]">
+                <thead>
+                  <tr className="border-b bg-accent/30">
+                    <th className="text-left p-2">Item</th>
+                    <th className="text-left p-2">Qty</th>
+                    <th className="text-left p-2">Unit</th>
+                    <th className="text-left p-2">Unit Price</th>
+                    <th className="text-left p-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedQuotation.items || []).map((it: any, idx: number) => (
+                    <tr key={idx} className="border-b">
+                      <td className="p-2">{
+                        typeof it.product === 'string'
+                          ? (productNames[it.product] || 'Product')
+                          : (it.product?.name || 'Product')
+                      }</td>
+                      <td className="p-2">{it.quantity}</td>
+                      <td className="p-2">{it.unit}</td>
+                      <td className="p-2">{inr(it.unitPrice)}</td>
+                      <td className="p-2">{inr(it.totalPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => navigate('/customer-dashboard#shop')}>Continue Shopping</Button>
-              <Button onClick={handleConvertToOrderAndPay} disabled={paying}>
-                {paying ? 'Processing…' : `Pay ${inr(selectedQuotation.total)} Now`}
-              </Button>
-            </div>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">Invoice: {invoice?.invoiceNumber ? `#${invoice.invoiceNumber}` : 'To be generated'}</div>
+                <div className="inline-flex gap-2">
+                  <Button variant="outline" onClick={() => navigate('/dashboard/customer#shop')}>Continue Shopping</Button>
+                  <Button onClick={handleConvertToOrderAndPay} disabled={paying}>{paying ? 'Processing…' : `Pay ${inr(selectedQuotation.total)} Now`}</Button>
+                </div>
+              </div>
+            </Card>
           </div>
         )}
       </div>
