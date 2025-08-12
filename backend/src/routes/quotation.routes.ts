@@ -4,7 +4,8 @@ import {
     getAllQuotationsForUser,
     getQuotationByIdForUser,
     updateQuotationStatusForUser,
-    deleteQuotationForUser
+    deleteQuotationForUser,
+    getMyApprovedQuotations
 } from '../controllers/quotation.controller';
 import { verifyJWT, authorizeRoles } from '../middlewares/index';
 
@@ -14,6 +15,8 @@ router.use(verifyJWT);
 router.route('/create')
     .post(authorizeRoles('customer'), createQuotation);
 router.route('/deleteQuotation/:id').delete(deleteQuotationForUser);
+router.route('/my-approved') // <-- Corrected route name for consistency
+    .get(authorizeRoles('customer'), getMyApprovedQuotations)
 router.use(authorizeRoles("end_user"))
 
 router.route('/getAllUserQuotations').get(getAllQuotationsForUser);
