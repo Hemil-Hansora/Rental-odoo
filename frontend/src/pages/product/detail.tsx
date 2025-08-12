@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Share2, Minus, Plus, Calendar as CalendarIcon } from 'lucide-react'
 import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
+import CustomerNavbar from '@/components/customer/CustomerNavbar'
 
 type APIProduct = {
   _id: string
@@ -111,6 +112,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <CustomerNavbar />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Breadcrumbs */}
         <div className="text-sm text-muted-foreground mb-4">

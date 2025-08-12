@@ -9,6 +9,10 @@ import ChangePasswordPage from './pages/profile/change-password';
 import ProductDetailPage from './pages/product/detail';
 import QuotationSummaryPage from './pages/quotation/summary';
 import RentalOrderForm from './pages/dashboard/RentalOrderForm';
+import WishlistPage from './pages/wishlist';
+import CartPage from './pages/cart';
+import ReviewOrderPage from './pages/orders/review';
+import ApprovedQuotationsProductsPage from './pages/quotations/approved';
 
 
 function App() {
@@ -25,6 +29,10 @@ function App() {
   <Route path="/profile/change-password" element={<ChangePasswordPage />} />
   <Route path="/product/:id" element={<ProductDetailPage />} />
   <Route path="/quotation/:id" element={<QuotationSummaryPage />} />
+  <Route path="/wishlist" element={<WishlistPage />} />
+  <Route path="/cart" element={<CartPage />} />
+  <Route path="/orders/review" element={<ReviewOrderPage />} />
+  <Route path="/quotations/approved-products" element={<ApprovedQuotationsProductsPage />} />
         {/* Add other routes for your application here */}
       </Routes>
     </Router>

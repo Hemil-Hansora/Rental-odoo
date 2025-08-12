@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Button } from '../../components/ui/button'
+import CustomerNavbar from '@/components/customer/CustomerNavbar'
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -115,6 +116,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <CustomerNavbar />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold gradient-text">My profile</h1>

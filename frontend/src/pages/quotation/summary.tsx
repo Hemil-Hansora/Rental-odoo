@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { daysBetweenInclusive, calculateCouponDiscount } from '@/lib/utils'
 import { api } from '@/lib/api'
+import CustomerNavbar from '@/components/customer/CustomerNavbar'
 
 // Lightweight tax/delivery model for demo
 const TAX_RATE = 0.1 // 10%
@@ -106,6 +107,7 @@ export default function QuotationSummaryPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <CustomerNavbar />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="text-sm text-muted-foreground mb-4">
           <Link to="/dashboard/customer#shop" className="hover:underline">Back to products</Link>

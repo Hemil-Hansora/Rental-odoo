@@ -10,7 +10,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { api } from "@/lib/api";
-import { addToCart as addToCartLS, totalCartQty } from "@/lib/utils";
+import { addToCart as addToCartLS, totalCartQty, getWishlist, toggleWishlist as toggleWishlistLS } from "@/lib/utils";
 import {
   Home,
   Store,
@@ -24,6 +24,7 @@ import {
   Search,
   SlidersHorizontal,
   LogOut,
+  Crown,
 } from "lucide-react";
 import { PriceRangeSlider } from "@/components/ui/PriceRangeSlider";
 
@@ -78,8 +79,33 @@ export default function CustomerDashboard() {
   const [maxPrice, setMaxPrice] = useState(100);
   const [selectedCats, setSelectedCats] = useState<string[]>([]);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>(getWishlist());
   const [cartCount, setCartCount] = useState<number>(totalCartQty());
+  const [rentedCount, setRentedCount] = useState<number>(0);
+
+  // VIP progress: count user's rented products from orders API
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        const res = await api.get('/api/v1/order/myOrder')
+        const orders: any[] = res?.data?.data || []
+        // Try to sum item quantities if available; otherwise, use order count
+        let count = 0
+        for (const o of orders) {
+          const items = (o.items || o.orderItems || []) as any[]
+          if (Array.isArray(items) && items.length) {
+            count += items.reduce((s, it) => s + (Number(it.quantity || it.qty || 1)), 0)
+          } else {
+            count += 1
+          }
+        }
+        setRentedCount(count)
+      } catch {
+        // ignore silently
+      }
+    }
+    loadOrders()
+  }, [])
 
   // ✅ 3. Fetch categories from the new API endpoint
   useEffect(() => {
@@ -147,10 +173,15 @@ export default function CustomerDashboard() {
   }, [products, search, minPrice, maxPrice, selectedCats]);
 
   // ... rest of your component code remains the same
+  useEffect(() => {
+    const onW = () => setWishlist(getWishlist())
+    window.addEventListener('wishlist:updated', onW)
+    return () => window.removeEventListener('wishlist:updated', onW)
+  }, [])
+
   const toggleWishlist = (id: string) => {
-    setWishlist((w) =>
-      w.includes(id) ? w.filter((x) => x !== id) : [...w, id]
-    );
+    toggleWishlistLS(id)
+    setWishlist(getWishlist())
   };
   const addToCart = (id: string) => {
     addToCartLS(id, 1);
@@ -200,19 +231,13 @@ export default function CustomerDashboard() {
               >
                 <Store className="size-4" /> Rental shop
               </a>
-              <button
-                className="inline-flex items-center gap-1 hover:underline"
-                title="Wishlist"
-              >
+              <button onClick={() => navigate('/wishlist')} className="inline-flex items-center gap-1 hover:underline" title="Wishlist">
                 <Heart className="size-4" /> Wishlist ({wishlist.length})
               </button>
-              <button
-                className="inline-flex items-center gap-1 hover:underline"
-                title="Cart"
-              >
+              <button onClick={() => navigate('/cart')} className="inline-flex items-center gap-1 hover:underline" title="Cart">
                 <ShoppingCart className="size-4" /> Cart ({cartCount})
               </button>
-              <a href="#review" className="hover:underline">
+              <a href="/orders/review" className="hover:underline">
                 Review order
               </a>
               <a
@@ -533,22 +558,43 @@ export default function CustomerDashboard() {
         </section>
       </main>
 
-      {/* Review + contact anchors for menu links */}
-      <section
-        id="review"
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:_px-8 py-8"
-      >
+      {/* VIP offer (replaces the old Review section) */}
+      <section id="review" className="max-w-7xl mx-auto px-4 sm:px-6 lg:_px-8 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Review order</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="size-5 text-yellow-500" /> Become a VIP
+            </CardTitle>
             <CardDescription>
-              Preview your cart and proceed to checkout (coming soon)
+              You can become a VIP when you rent your first 10 products.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              Items in cart: {cartCount}. We’ll integrate backend later.
-            </div>
+            {(() => {
+              const goal = 10
+              const current = Math.max(0, Math.min(goal, rentedCount))
+              const remaining = Math.max(0, goal - rentedCount)
+              const pct = Math.round((current / goal) * 100)
+              return (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">
+                    You’ve rented {current}/{goal}. {remaining > 0 ? `Rent ${remaining} more to unlock VIP benefits.` : 'Congrats! You’ve unlocked VIP status.'}
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-accent/40 overflow-hidden">
+                    <div className="h-full bg-yellow-500" style={{ width: pct + '%' }} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={() => navigate('/dashboard/customer#shop')} className="btn-gradient">Browse rentals</Button>
+                    <Button variant="outline" onClick={() => navigate('/orders/review')}>View orders</Button>
+                  </div>
+                  <ul className="mt-2 text-sm text-muted-foreground list-disc list-inside">
+                    <li>Priority support</li>
+                    <li>Exclusive VIP-only offers</li>
+                    <li>Early access to new products</li>
+                  </ul>
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
       </section>
