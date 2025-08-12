@@ -4,7 +4,8 @@ import {
     getAllQuotationsForUser,
     getQuotationByIdForUser,
     updateQuotationStatusForUser,
-    deleteQuotationForUser
+    deleteQuotationForUser,
+    approvedQuotationsProducts
 } from '../controllers/quotation.controller';
 import { verifyJWT, authorizeRoles } from '../middlewares/index';
 
@@ -20,6 +21,6 @@ router.route('/getAllUserQuotations').get(getAllQuotationsForUser);
 
 router.route('/getQuotation/:id').get(getQuotationByIdForUser)
 router.route('/status/:id').patch(updateQuotationStatusForUser);
-
+router.route('/approvedProducts/:id').get(approvedQuotationsProducts);
 
 export default router;

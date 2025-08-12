@@ -301,3 +301,24 @@ export const deleteQuotationForUser = asyncHandler(async (req: Request, res: Res
         .status(200)
         .json(new ApiResponse(200, { id }, "Quotation deleted successfully"));
 });
+export const approvedQuotationsProducts = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new ApiError(400, "Invalid Quotation ID");
+    }
+    if (!req.user) {
+        throw new ApiError(401, "User not authenticated. Please log in.");
+    }
+
+    const quotation = await Quotation.findById(id).populate('products.product', 'name');
+
+    if (!quotation) {
+        throw new ApiError(404, "Quotation not found");
+    }
+
+    const approvedProducts = quotation.products.filter((product:any) => product.status === 'approved');
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, approvedProducts, "Approved products retrieved successfully"));
+});
