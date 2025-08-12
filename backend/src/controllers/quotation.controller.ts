@@ -301,6 +301,7 @@ export const deleteQuotationForUser = asyncHandler(async (req: Request, res: Res
         .status(200)
         .json(new ApiResponse(200, { id }, "Quotation deleted successfully"));
 });
+<<<<<<< HEAD
 export const approvedQuotationsProducts = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -321,4 +322,45 @@ export const approvedQuotationsProducts = asyncHandler(async (req: Request, res:
     return res
         .status(200)
         .json(new ApiResponse(200, approvedProducts, "Approved products retrieved successfully"));
+=======
+
+// export const getApprovedQuotationsForUserId = asyncHandler(async (req: Request, res: Response) => {
+//     const userId = req.params.userId;
+//     if (!mongoose.Types.ObjectId.isValid(userId)) {
+//         throw new ApiError(400, "Invalid User ID");
+//     }
+//     const quotations = await Quotation.find({
+//         createdBy: userId,
+//         status: 'approved'      
+//     })
+//         .populate('items.product', 'name images')
+//         .populate('vendor', 'name email')
+//         .populate('createdBy', 'name email')
+//         .sort({ createdAt: -1 });
+
+//     return res
+//         .status(200)
+//         .json(new ApiResponse(200, quotations, "Approved quotations retrieved successfully"));
+
+// })
+
+export const getMyApprovedQuotations = asyncHandler(async (req: Request, res: Response) => {
+    // 1. Safety check to ensure the user is logged in
+    if (!req.user) {
+        throw new ApiError(401, "User not authenticated");
+    }
+
+    // 2. Find all quotations that are 'approved' and were created by the logged-in user
+    const quotations = await Quotation.find({
+        createdBy: req.user._id, // Use the logged-in user's ID here
+        status: 'approved'
+    })
+    .populate('vendor', 'name email')
+    .sort({ createdAt: -1 });
+
+    // 3. Return the result
+    return res
+        .status(200)
+        .json(new ApiResponse(200, quotations, "Your approved quotations retrieved successfully"));
+>>>>>>> 273165b023bc90427061c13767a43cedcaf5201a
 });
